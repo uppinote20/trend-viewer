@@ -1,7 +1,7 @@
 ---
 created: 2026-07-07
-tags: [trend-viewer, YouTube, InnerTube, video-search]
-aliases: [youtube 모듈, 유튜브 검색, 쇼츠 검색]
+tags: [trend-viewer, YouTube, InnerTube, video-search, country-filter]
+aliases: [youtube 모듈, 유튜브 검색, 쇼츠 검색, 국가별 유튜브]
 ---
 
 # youtube 모듈 문서
@@ -21,43 +21,44 @@ aliases: [youtube 모듈, 유튜브 검색, 쇼츠 검색]
 | 파일 | 라인 수 | 역할 |
 |---|---:|---|
 | `src/youtube/__init__.py` | 3 | CATEGORIES와 get_videos 배럴 export |
-| `src/youtube/youtube_tool.py` | 170 | YouTube InnerTube 검색과 좋아요 보강 |
-| `src/youtube/test_youtube_tool.py` | 163 | YouTube 검색 계약 단위 테스트 |
+| `src/youtube/youtube_tool.py` | 259 | 국가별 YouTube InnerTube 검색, 기간 필터, 좋아요 보강 |
+| `src/youtube/test_youtube_tool.py` | 222 | YouTube 검색·국가·캐시 계약 단위 테스트 |
 
 ### 파일별 읽기 순서
 
-1. `src/youtube/__init__.py`를 읽는다. CATEGORIES와 get_videos 배럴 export 라인 수는 3줄이다.
-2. `src/youtube/youtube_tool.py`를 읽는다. YouTube InnerTube 검색과 좋아요 보강 라인 수는 170줄이다.
-3. `src/youtube/test_youtube_tool.py`를 읽는다. YouTube 검색 계약 단위 테스트 라인 수는 163줄이다.
+1. `src/youtube/__init__.py`를 읽는다. 배럴 export 라인 수는 3줄이다.
+2. `src/youtube/youtube_tool.py`를 읽는다. 국가별 InnerTube 검색과 좋아요 보강 라인 수는 259줄이다.
+3. `src/youtube/test_youtube_tool.py`를 읽는다. 검색 계약 테스트 라인 수는 222줄이다.
 
 ### 파일 경계 메모
 
-- `src/youtube/__init__.py`는 CATEGORIES와 get_videos 배럴 export을 맡는다.
-- `src/youtube/__init__.py`의 현재 기준 라인 수는 3줄이다.
-- `src/youtube/__init__.py`가 바뀌면 File Tree와 관련 체크리스트를 함께 갱신한다.
-- `src/youtube/youtube_tool.py`는 YouTube InnerTube 검색과 좋아요 보강을 맡는다.
-- `src/youtube/youtube_tool.py`의 현재 기준 라인 수는 170줄이다.
-- `src/youtube/youtube_tool.py`가 바뀌면 File Tree와 관련 체크리스트를 함께 갱신한다.
-- `src/youtube/test_youtube_tool.py`는 YouTube 검색 계약 단위 테스트을 맡는다.
-- `src/youtube/test_youtube_tool.py`의 현재 기준 라인 수는 163줄이다.
-- `src/youtube/test_youtube_tool.py`가 바뀌면 File Tree와 관련 체크리스트를 함께 갱신한다.
+- `src/youtube/__init__.py`는 public export 표면만 맡는다.
+- `src/youtube/youtube_tool.py`는 카테고리 query, 국가 locale, InnerTube payload, 결과 파싱, 좋아요 보강, 캐시 key를 모두 소유한다.
+- `src/youtube/test_youtube_tool.py`는 base64 params, 기간 제외어, country fallback, cache key 분리까지 계약으로 묶는다.
+- 라인 수가 바뀌면 File Tree와 문서 동기화 체크를 함께 갱신한다.
 
 ## Module Responsibility
 
 `src/youtube/`는 유튜브 일반 영상과 쇼츠 검색을 담당한다.
-카테고리와 기간 필터를 InnerTube search payload로 바꾸고, 결과 트리를 순회해 videoRenderer 목록을 평탄화한다.
-좋아요순 정렬이 필요할 때는 next endpoint를 추가 호출해 일부 영상에 likes 값을 보강한다.
+카테고리와 기간 필터를 InnerTube search payload로 바꾸고, 결과 트리를 순회해 `videoRenderer` 목록을 평탄화한다.
+좋아요순 정렬이 필요할 때는 next endpoint를 추가 호출해 일부 영상에 `likes` 값을 보강한다.
+현재 구현은 한국·미국·일본 국가 선택을 지원하며, 국가값은 검색 locale과 카테고리 query, 기간 문자열 필터, 캐시 key까지 관통한다.
 
 ### 책임 경계
 
-- 카테고리 이름과 검색어 선택을 소유한다.
-- 기간 필터와 shorts 필터의 base64 params 생성을 소유한다.
-- videoRenderer 파싱과 중복 제거를 소유한다.
-- 좋아요 보강은 선택적 enrich 경로로만 수행한다.
+- `CATEGORIES`는 기본 한국어 카테고리 이름과 fallback query를 소유한다.
+- `COUNTRY_LOCALE`은 `KR -> (ko, KR)`, `US -> (en, US)`, `JP -> (ja, JP)` InnerTube client locale을 소유한다.
+- `COUNTRY_CATEGORIES`는 미국·일본에서 카테고리별 다중 검색어를 소유한다.
+- `PERIOD_CODE`는 InnerTube 기간 filter base64 생성을 소유한다.
+- `PERIOD_EXCLUDE_BY_LOCALE`은 `ko/en/ja` 발행일 문자열 후처리를 소유한다.
+- `extract_videos`는 videoRenderer shape를 앱 내부 item shape로 바꾼다.
+- 좋아요 보강은 `enrich=True`일 때만 실행되는 선택 경로다.
 
 ### 운영 관점
 
-- `CATEGORIES`는 프론트 chip 목록과 서버 category 검증에 연결된다.
+- `country`는 `/api/videos` query param으로 들어오며 유효하지 않으면 `KR`로 정규화된다.
+- `yt_search`, `yt_like_count`, `enrich_likes`, `merge_yt_searches`, `get_videos` 모두 country 인자를 받는다.
+- 캐시 key는 `("yt", country, query or category, period, shorts, enrich)`라서 국가별 결과가 섞이지 않는다.
 - `get_videos` 결과는 main.py에서 `videos[:60]`으로 잘린다.
 - 영상 item은 `id`, `title`, `channel`, `views`, `viewsText`, `length`, `published`, `thumbnail`, 선택적 `likes`를 가진다.
 
@@ -66,10 +67,28 @@ aliases: [youtube 모듈, 유튜브 검색, 쇼츠 검색]
 아래 함수명은 실제 소스의 공개 함수와 내부 헬퍼를 기준으로 한다.
 테스트 헬퍼는 동작 계약을 보여주는 경우에만 포함한다.
 
-### `within_period(published: str, period: str) -> bool`
+### `_country_key(country: str) -> str`
 
-- 상대 발행 문자열에 제외 문구가 있는지 확인한다.
-- day/week/month별 제외 단어는 `PERIOD_EXCLUDE`가 소유한다.
+- 입력을 대문자로 바꾸고 `COUNTRY_LOCALE`에 없으면 `KR`을 반환한다.
+- 모든 country-aware 함수의 방어선이다.
+
+### `_locale_for_country(country: str)`
+
+- `_country_key`로 정규화한 뒤 InnerTube `hl`, `gl` 튜플을 반환한다.
+
+### `_category_queries(category: str, country: str)`
+
+- `전체`는 `ALL_MERGE` 카테고리를 펼쳐 query 목록으로 만든다.
+- `AI`는 `AI_YT_QUERIES`를 반환한다.
+- `US`와 `JP`는 `COUNTRY_CATEGORIES`의 다중 query를 우선 사용한다.
+- fallback은 `CATEGORIES.get(category, category)`이다.
+
+### `within_period(published: str, period: str, country: str = "KR") -> bool`
+
+- 발행 문자열이 비어 있으면 통과시킨다.
+- 국가 locale에 맞는 제외어 목록을 보고 day/week/month 결과를 후처리한다.
+- 영어 week 필터는 `"week ago"`, `"weeks ago"`, month/year 계열을 제외하지만 `"days ago"`는 제외하지 않는다.
+- 한국어는 `일 전/주 전/개월 전/년 전`, 일본어는 `日前/週間前/か月前/年前` 계열을 사용한다.
 
 ### `build_search_params(period: str, shorts: bool = False) -> str`
 
@@ -80,37 +99,45 @@ aliases: [youtube 모듈, 유튜브 검색, 쇼츠 검색]
 - 중첩 dict/list를 재귀 순회하며 `videoRenderer`를 찾는다.
 - id, title, channel, views, length, published, thumbnail을 out에 append한다.
 
-### `yt_search(query: str, period: str, shorts: bool)`
+### `yt_search(query: str, period: str, shorts: bool, country: str = "KR")`
 
-- `/youtubei/v1/search` payload를 만들고 JSON 응답을 파싱한다.
+- `/youtubei/v1/search` payload에 `hl/gl`, query, params를 넣어 호출한다.
 - 네트워크와 JSON 오류는 빈 리스트로 폴백한다.
+- id dedupe 뒤 `within_period(..., country)`로 locale별 기간 필터를 적용한다.
 
-### `yt_like_count(video_id: str)`
+### `yt_like_count(video_id: str, country: str = "KR")`
 
-- `/youtubei/v1/next` body에서 한국어 또는 영어 좋아요 패턴을 regex로 찾는다.
+- `/youtubei/v1/next` payload에도 국가별 `hl/gl`을 넣는다.
+- 한국어 `다른 사용자 ...명` 또는 영어 `along with ... other` 패턴을 찾아 likes를 계산한다.
 - 실패하면 0을 반환한다.
 
-### `enrich_likes(videos, limit=45)`
+### `enrich_likes(videos, limit=45, country: str = "KR")`
 
 - 상위 limit개 중 likes가 없는 영상만 ThreadPoolExecutor로 보강한다.
+- 각 작업은 `yt_like_count(video_id, country)`를 호출한다.
 
-### `merge_yt_searches(queries, period, shorts)`
+### `merge_yt_searches(queries, period, shorts, country: str = "KR")`
 
 - 여러 query를 병렬 검색하고 id 기준으로 dedupe한 뒤 views 내림차순 정렬한다.
 
-### `get_videos(category: str, period: str, shorts: bool, force: bool, enrich: bool = False, query: str = "")`
+### `get_videos(category: str, period: str, shorts: bool, force: bool, enrich: bool = False, query: str = "", country: str = "KR")`
 
-- query, 전체, AI, 단일 카테고리의 query 목록을 결정한다.
-- 캐시 key는 `("yt", query or category, period, shorts, enrich)`이다.
+- country를 먼저 정규화한다.
+- 직접 검색어가 있으면 단일 query, 없으면 `_category_queries(category, country)`를 사용한다.
+- enrich가 참이면 `enrich_likes(..., country=country)`를 수행한다.
+- 캐시는 country를 포함한 key로 저장한다.
 
 ### 테스트 함수 지도
 
 - `YoutubeToolTest.test_extract_videos_nested_tree`
 - `YoutubeToolTest.test_within_period_filters_excluded_phrases`
+- `YoutubeToolTest.test_within_period_english_week_allows_days_ago`
 - `YoutubeToolTest.test_build_search_params_exact_base64`
 - `YoutubeToolTest.test_yt_search_payload_dedupes_and_filters_period`
+- `YoutubeToolTest.test_yt_search_uses_country_locale`
 - `YoutubeToolTest.test_yt_like_count_regex_korean_english_and_failure`
 - `YoutubeToolTest.test_get_videos_query_selection_and_force_cache_contract`
+- `YoutubeToolTest.test_get_videos_cache_key_includes_country`
 
 ## Dependencies
 
@@ -121,198 +148,47 @@ aliases: [youtube 모듈, 유튜브 검색, 쇼츠 검색]
 - `shared.cache_tool`
 - `shared.http_tool`
 
-### 의존성 변경 시 주의점
-
-- base64, json, re, urllib.error 변경은 호출 경로와 테스트 더블을 함께 확인한다.
-- concurrent.futures.ThreadPoolExecutor 변경은 호출 경로와 테스트 더블을 함께 확인한다.
-- shared.cache_tool 변경은 호출 경로와 테스트 더블을 함께 확인한다.
-- shared.http_tool 변경은 호출 경로와 테스트 더블을 함께 확인한다.
-
 ## Dependents
 
 이 모듈을 import하거나 HTTP 라우트로 소비하는 쪽이다.
 
 - `src/youtube/__init__.py` re-exports `CATEGORIES`, `get_videos`
 - `src/main.py` reads `youtube_tool.CATEGORIES` in `/api/categories`
+- `src/main.py` validates `youtube_tool.COUNTRY_LOCALE` in `/api/videos`
 - `src/main.py` calls `youtube_tool.get_videos` in `/api/videos`
 - `src/frontend/index.html` calls `/api/categories` and `/api/videos`
-
-### 호출자 영향 범위
-
-- `src/youtube/__init__.py` re-exports `CATEGORIES`, `get_videos` 쪽 응답 shape가 깨지지 않는지 확인한다.
-- `src/main.py` reads `youtube_tool.CATEGORIES` in `/api/categories` 쪽 응답 shape가 깨지지 않는지 확인한다.
-- `src/main.py` calls `youtube_tool.get_videos` in `/api/videos` 쪽 응답 shape가 깨지지 않는지 확인한다.
-- `src/frontend/index.html` calls `/api/categories` and `/api/videos` 쪽 응답 shape가 깨지지 않는지 확인한다.
 
 ## Sync Checklist
 
 코드를 바꾼 뒤에는 아래 항목을 순서대로 확인한다.
 체크박스는 실제 변경에서 완료 여부를 남기는 용도다.
 
-- [ ] CATEGORIES 변경 시 `/api/categories`와 프론트 chip 표시를 확인한다.
-- [ ] PERIOD_CODE 변경 시 exact base64 테스트를 갱신한다.
+- [ ] `CATEGORIES`, `COUNTRY_CATEGORIES` 변경 시 `/api/categories`와 프론트 chip 표시를 확인한다.
+- [ ] `COUNTRY_LOCALE` 변경 시 main.py country validation과 frontend country segmented control을 함께 갱신한다.
+- [ ] `PERIOD_CODE` 변경 시 exact base64 테스트를 갱신한다.
+- [ ] `PERIOD_EXCLUDE_BY_LOCALE` 변경 시 ko/en/ja 기간 필터 테스트를 갱신한다.
 - [ ] video item 키 변경 시 `videoCard`와 `/api/videos` 응답을 갱신한다.
-- [ ] 좋아요 보강 범위 변경 시 enrich cache key를 검토한다.
-- [ ] ThreadPoolExecutor worker 수 변경 시 외부 endpoint 부하를 검토한다.
+- [ ] 좋아요 보강 범위나 country 전달이 바뀌면 enrich cache key를 검토한다.
+- [ ] 캐시 key shape가 바뀌면 국가별 cache 격리 테스트를 갱신한다.
 
 ### 실패 동작 체크
 
 - [ ] InnerTube search 오류는 빈 리스트로 폴백한다.
 - [ ] like count 오류는 0으로 폴백한다.
 - [ ] 중복 video id는 한 번만 남아야 한다.
+- [ ] unknown country는 `KR`로 폴백해야 한다.
 
 ### 문서 동기화 체크
 
 - [ ] `src/youtube/__init__.py` 라인 수가 3줄에서 바뀌면 File Tree를 갱신한다.
-- [ ] `src/youtube/__init__.py`의 CATEGORIES와 get_videos 배럴 export 설명이 실제 코드와 어긋나지 않는지 확인한다.
-- [ ] `src/youtube/youtube_tool.py` 라인 수가 170줄에서 바뀌면 File Tree를 갱신한다.
-- [ ] `src/youtube/youtube_tool.py`의 YouTube InnerTube 검색과 좋아요 보강 설명이 실제 코드와 어긋나지 않는지 확인한다.
-- [ ] `src/youtube/test_youtube_tool.py` 라인 수가 163줄에서 바뀌면 File Tree를 갱신한다.
-- [ ] `src/youtube/test_youtube_tool.py`의 YouTube 검색 계약 단위 테스트 설명이 실제 코드와 어긋나지 않는지 확인한다.
-
-### 테스트 동기화 체크
-
-- [ ] `YoutubeToolTest.test_extract_videos_nested_tree`가 변경된 계약을 검증하는지 확인한다.
-- [ ] `YoutubeToolTest.test_within_period_filters_excluded_phrases`가 변경된 계약을 검증하는지 확인한다.
-- [ ] `YoutubeToolTest.test_build_search_params_exact_base64`가 변경된 계약을 검증하는지 확인한다.
-- [ ] `YoutubeToolTest.test_yt_search_payload_dedupes_and_filters_period`가 변경된 계약을 검증하는지 확인한다.
-- [ ] `YoutubeToolTest.test_yt_like_count_regex_korean_english_and_failure`가 변경된 계약을 검증하는지 확인한다.
-- [ ] `YoutubeToolTest.test_get_videos_query_selection_and_force_cache_contract`가 변경된 계약을 검증하는지 확인한다.
+- [ ] `src/youtube/youtube_tool.py` 라인 수가 259줄에서 바뀌면 File Tree를 갱신한다.
+- [ ] `src/youtube/test_youtube_tool.py` 라인 수가 222줄에서 바뀌면 File Tree를 갱신한다.
 
 ## 변경 기록
 
-- 2026-07-07: 실제 소스 기준으로 str_func 모듈 문서를 작성했다.
+- 2026-07-07: 국가별 YouTube 검색, locale별 기간 필터, country 포함 캐시 key를 문서에 동기화했다.
 
 ## 문서 연결
 
-- [ ] 동기화 보강 1: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 2: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 3: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 4: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 5: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 6: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 7: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 8: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 9: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 10: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 11: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 12: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 13: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 14: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 15: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 16: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 17: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 18: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 19: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 20: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 21: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 22: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 23: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 24: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 25: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 26: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 27: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 28: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 29: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 30: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 31: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 32: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 33: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 34: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 35: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 36: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 37: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 38: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 39: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 40: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 41: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 42: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 43: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 44: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 45: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 46: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 47: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 48: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 49: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 50: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 51: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 52: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 53: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 54: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 55: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 56: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 57: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 58: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 59: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 60: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 61: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 62: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 63: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 64: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 65: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 66: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 67: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 68: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 69: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 70: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 71: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 72: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 73: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 74: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 75: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 76: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 77: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 78: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 79: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 80: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 81: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 82: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 83: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 84: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 85: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 86: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 87: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 88: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 89: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 90: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 91: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 92: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 93: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 94: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 95: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 96: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 97: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 98: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 99: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 100: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 101: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 102: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 103: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 104: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 105: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 106: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 107: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 108: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 109: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 110: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 111: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 112: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 113: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 114: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 115: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 116: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 117: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 118: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 119: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 120: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 121: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 122: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 123: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 124: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 125: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 126: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 127: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 128: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
 - 이전: [[shared.md]]
 - 다음: [[reels.md]]
-

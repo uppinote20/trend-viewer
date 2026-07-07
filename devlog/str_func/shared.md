@@ -1,7 +1,7 @@
 ---
 created: 2026-07-07
-tags: [trend-viewer, shared-tools, stdlib-python, cache, accounts]
-aliases: [shared 모듈, 공유 도구, http cache accounts]
+tags: [trend-viewer, shared-tools, stdlib-python, cache, accounts, image-proxy]
+aliases: [shared 모듈, 공유 도구, http cache accounts, 이미지 프록시]
 ---
 
 # shared 모듈 문서
@@ -21,76 +21,58 @@ aliases: [shared 모듈, 공유 도구, http cache accounts]
 | 파일 | 라인 수 | 역할 |
 |---|---:|---|
 | `src/shared/__init__.py` | 3 | shared 하위 도구 배럴 import |
-| `src/shared/http_tool.py` | 29 | HTTP 요청과 JSON 파싱, 조회수 숫자 파싱 |
-| `src/shared/cache_tool.py` | 23 | 메모리 TTL 캐시 |
 | `src/shared/accounts_tool.py` | 54 | 계정 파일 저장소와 source registry |
+| `src/shared/cache_tool.py` | 36 | 메모리 TTL 캐시와 per-entry TTL 조회 |
+| `src/shared/http_tool.py` | 52 | HTTP 요청, JSON 파싱, 다국어 조회수 숫자 파싱 |
 | `src/shared/img_proxy_tool.py` | 32 | 썸네일 이미지 프록시와 allowlist 캐시 |
-| `src/shared/test_http_tool.py` | 59 | HTTP helper 단위 테스트 |
-| `src/shared/test_cache_tool.py` | 48 | TTL 캐시 단위 테스트 |
+| `src/shared/saved_items_tool.py` | 60 | 저장 카드 JSON 파일 저장소 |
 | `src/shared/test_accounts_tool.py` | 62 | 계정 저장소 단위 테스트 |
+| `src/shared/test_cache_tool.py` | 81 | TTL 캐시와 callback TTL 단위 테스트 |
+| `src/shared/test_http_tool.py` | 79 | HTTP helper와 suffix 조회수 파서 테스트 |
 | `src/shared/test_img_proxy_tool.py` | 47 | 이미지 프록시 단위 테스트 |
+| `src/shared/test_saved_items_tool.py` | 69 | 저장 카드 저장소 단위 테스트 |
 
 ### 파일별 읽기 순서
 
-1. `src/shared/__init__.py`를 읽는다. shared 하위 도구 배럴 import 라인 수는 3줄이다.
-2. `src/shared/http_tool.py`를 읽는다. HTTP 요청과 JSON 파싱, 조회수 숫자 파싱 라인 수는 29줄이다.
-3. `src/shared/cache_tool.py`를 읽는다. 메모리 TTL 캐시 라인 수는 23줄이다.
-4. `src/shared/accounts_tool.py`를 읽는다. 계정 파일 저장소와 source registry 라인 수는 54줄이다.
-5. `src/shared/img_proxy_tool.py`를 읽는다. 썸네일 이미지 프록시와 allowlist 캐시 라인 수는 32줄이다.
-6. `src/shared/test_http_tool.py`를 읽는다. HTTP helper 단위 테스트 라인 수는 59줄이다.
-7. `src/shared/test_cache_tool.py`를 읽는다. TTL 캐시 단위 테스트 라인 수는 48줄이다.
-8. `src/shared/test_accounts_tool.py`를 읽는다. 계정 저장소 단위 테스트 라인 수는 62줄이다.
-9. `src/shared/test_img_proxy_tool.py`를 읽는다. 이미지 프록시 단위 테스트 라인 수는 47줄이다.
+1. `src/shared/__init__.py`를 읽는다. 배럴 import 라인 수는 3줄이다.
+2. `src/shared/http_tool.py`를 읽는다. HTTP helper와 조회수 파서 라인 수는 52줄이다.
+3. `src/shared/cache_tool.py`를 읽는다. TTL 캐시 라인 수는 36줄이다.
+4. `src/shared/accounts_tool.py`를 읽는다. 계정 저장소 라인 수는 54줄이다.
+5. `src/shared/img_proxy_tool.py`를 읽는다. 이미지 프록시 라인 수는 32줄이다.
+6. `src/shared/saved_items_tool.py`를 읽는다. 저장 카드 저장소 라인 수는 60줄이다.
+7. 관련 `test_*.py`를 읽어 호출 계약과 실패 동작을 확인한다.
 
 ### 파일 경계 메모
 
-- `src/shared/__init__.py`는 shared 하위 도구 배럴 import을 맡는다.
-- `src/shared/__init__.py`의 현재 기준 라인 수는 3줄이다.
-- `src/shared/__init__.py`가 바뀌면 File Tree와 관련 체크리스트를 함께 갱신한다.
-- `src/shared/http_tool.py`는 HTTP 요청과 JSON 파싱, 조회수 숫자 파싱을 맡는다.
-- `src/shared/http_tool.py`의 현재 기준 라인 수는 29줄이다.
-- `src/shared/http_tool.py`가 바뀌면 File Tree와 관련 체크리스트를 함께 갱신한다.
-- `src/shared/cache_tool.py`는 메모리 TTL 캐시을 맡는다.
-- `src/shared/cache_tool.py`의 현재 기준 라인 수는 23줄이다.
-- `src/shared/cache_tool.py`가 바뀌면 File Tree와 관련 체크리스트를 함께 갱신한다.
-- `src/shared/accounts_tool.py`는 계정 파일 저장소와 source registry을 맡는다.
-- `src/shared/accounts_tool.py`의 현재 기준 라인 수는 54줄이다.
-- `src/shared/accounts_tool.py`가 바뀌면 File Tree와 관련 체크리스트를 함께 갱신한다.
-- `src/shared/img_proxy_tool.py`는 썸네일 이미지 프록시와 allowlist 캐시을 맡는다.
-- `src/shared/img_proxy_tool.py`의 현재 기준 라인 수는 32줄이다.
-- `src/shared/img_proxy_tool.py`가 바뀌면 File Tree와 관련 체크리스트를 함께 갱신한다.
-- `src/shared/test_http_tool.py`는 HTTP helper 단위 테스트을 맡는다.
-- `src/shared/test_http_tool.py`의 현재 기준 라인 수는 59줄이다.
-- `src/shared/test_http_tool.py`가 바뀌면 File Tree와 관련 체크리스트를 함께 갱신한다.
-- `src/shared/test_cache_tool.py`는 TTL 캐시 단위 테스트을 맡는다.
-- `src/shared/test_cache_tool.py`의 현재 기준 라인 수는 48줄이다.
-- `src/shared/test_cache_tool.py`가 바뀌면 File Tree와 관련 체크리스트를 함께 갱신한다.
-- `src/shared/test_accounts_tool.py`는 계정 저장소 단위 테스트을 맡는다.
-- `src/shared/test_accounts_tool.py`의 현재 기준 라인 수는 62줄이다.
-- `src/shared/test_accounts_tool.py`가 바뀌면 File Tree와 관련 체크리스트를 함께 갱신한다.
-- `src/shared/test_img_proxy_tool.py`는 이미지 프록시 단위 테스트을 맡는다.
-- `src/shared/test_img_proxy_tool.py`의 현재 기준 라인 수는 47줄이다.
-- `src/shared/test_img_proxy_tool.py`가 바뀌면 File Tree와 관련 체크리스트를 함께 갱신한다.
+- `src/shared/http_tool.py`는 네트워크 요청과 숫자 문자열 파싱까지만 맡는다.
+- `src/shared/cache_tool.py`는 process-local cache와 TTL 계산만 맡는다.
+- `src/shared/accounts_tool.py`는 계정 목록 파일과 source registry를 맡는다.
+- `src/shared/img_proxy_tool.py`는 HTTPS allowlist 검사, 이미지 fetch, 작은 메모리 캐시를 맡는다.
+- `src/shared/saved_items_tool.py`는 저장 카드 CRUD 파일 계약을 맡는다.
+- 라인 수가 바뀌면 File Tree와 문서 동기화 체크를 함께 갱신한다.
 
 ## Module Responsibility
 
-`src/shared/`는 포팅된 기능 모듈들이 반복해서 쓰는 HTTP, 캐시, 계정 저장소, 이미지 프록시를 한 곳에 둔다.
+`src/shared/`는 포팅된 기능 모듈들이 반복해서 쓰는 HTTP, 캐시, 계정 저장소, 이미지 프록시, 저장 카드 저장소를 한 곳에 둔다.
 각 기능 모듈은 외부 API 파싱에 집중하고, 네트워크 요청과 TTL, 계정 파일 처리는 shared에 위임한다.
-서버 라우트도 이미지 프록시와 계정 갱신을 shared 함수로 처리하므로 이 폴더는 작은 공통 런타임 계층이다.
+서버 라우트도 이미지 프록시와 계정·저장 카드 갱신을 shared 함수로 처리하므로 이 폴더는 작은 공통 런타임 계층이다.
 
 ### 책임 경계
 
-- HTTP helper는 User-Agent와 JSON payload 규칙을 소유한다.
-- Cache helper는 1시간 TTL과 force refresh 계약을 소유한다.
+- HTTP helper는 User-Agent와 JSON payload 규칙, 조회수 suffix 파서를 소유한다.
+- Cache helper는 기본 TTL, callback TTL, 저장된 entry TTL 조회를 소유한다.
 - Accounts helper는 config 디렉터리의 JSON 파일 계약을 소유한다.
 - Image proxy는 프론트 썸네일 CORS와 allowlist 정책을 소유한다.
+- Saved items helper는 local JSON 저장 카드 shape와 최대 개수를 소유한다.
 
 ### 운영 관점
 
 - `cached`의 반환 계약은 항상 데이터와 epoch timestamp 쌍이다.
+- `ttl_for`는 저장된 cache entry의 effective TTL을 반환하고, 없으면 `settings.CACHE_TTL`을 반환한다.
 - `update_accounts`는 unknown source일 때 KeyError를 낼 수 있고, main.py는 먼저 `get_source`로 막는다.
 - `fetch_image`는 dict body를 JSON으로 보낼 수 있게 main.py의 `_send` 계약에 맞춘다.
 - allowlist는 `settings.IMG_PROXY_ALLOW` tuple의 suffix 매칭이다.
+- `settings.IMG_PROXY_ALLOW`에는 `.gstatic.com`이 포함되어 Google Trends 이미지도 프록시할 수 있다.
 
 ## Key Function Signatures
 
@@ -110,14 +92,31 @@ aliases: [shared 모듈, 공유 도구, http cache accounts]
 
 ### `parse_view_count(text: str) -> int`
 
-- 조회수 문자열에서 숫자만 남긴다.
-- 숫자가 없으면 0을 반환한다.
+- 조회수 문자열에서 축약 suffix를 해석한다.
+- 지원 suffix는 `K`, `M`, `B`, `만`, `万`, `억`, `億`이다.
+- `K/M/B`는 대소문자 무시로 처리하고, 한중일 suffix는 원문 문자 기준 multiplier를 쓴다.
+- `1,5K`처럼 comma 뒤 1~2자리 숫자는 decimal comma로 보아 `1.5K`로 계산한다.
+- 그 외 comma는 thousands separator로 제거한다.
+- suffix 패턴이 없으면 숫자만 남겨 int로 바꾸고, 숫자가 없으면 0을 반환한다.
 
-### `cached(key, force, fetch_fn)`
+### `_entry_ttl(hit)`
+
+- cache entry가 3-tuple이면 저장된 TTL을 반환한다.
+- 예전 2-tuple entry는 `settings.CACHE_TTL`로 해석한다.
+
+### `cached(key, force, fetch_fn, ttl=None)`
 
 - 캐시 hit이고 TTL 안이며 force가 거짓이면 저장된 값을 반환한다.
 - miss이거나 force가 참이면 `fetch_fn`을 실행하고 현재 시각과 함께 저장한다.
+- `ttl`이 callable이면 `ttl(result)`를 effective TTL로 쓴다.
+- `ttl` 결과가 `None`이면 기본 `settings.CACHE_TTL`을 쓴다.
 - 반환값은 `(result, fetched_at)`이다.
+
+### `ttl_for(key)`
+
+- 저장된 cache key의 effective TTL을 반환한다.
+- entry가 없으면 기본 `settings.CACHE_TTL`을 반환한다.
+- `/api/trends`처럼 실패 시 negative cache TTL을 응답해야 하는 route가 사용한다.
 
 ### `load_accounts(path, defaults)`
 
@@ -153,18 +152,18 @@ aliases: [shared 모듈, 공유 도구, http cache accounts]
 ### 테스트 함수 지도
 
 - `HttpToolTest.test_parse_view_count_digits_and_empty`
+- `HttpToolTest.test_parse_view_count_suffixes_and_decimal_comma`
 - `HttpToolTest.test_http_get_header_and_payload_construction`
 - `CacheToolTest.test_cached_hit`
 - `CacheToolTest.test_cached_ttl_expiry`
 - `CacheToolTest.test_cached_force`
+- `CacheToolTest.test_cached_custom_ttl_callback`
+- `CacheToolTest.test_ttl_for_missing_and_existing`
 - `AccountsToolTest.test_load_save_roundtrip`
-- `AccountsToolTest.test_load_corrupt_json_falls_back_to_defaults`
 - `AccountsToolTest.test_registry_add_remove_lowercases_by_default`
-- `AccountsToolTest.test_registry_preserves_case_for_x`
-- `AccountsToolTest.test_unknown_source`
 - `ImgProxyToolTest.test_allowlist_rejects_http_and_disallowed_host`
 - `ImgProxyToolTest.test_cache_hit_skips_fetch`
-- `ImgProxyToolTest.test_cache_clear_at_max`
+- `SavedItemsToolTest` 저장 카드 계약 테스트들
 
 ## Dependencies
 
@@ -179,44 +178,22 @@ aliases: [shared 모듈, 공유 도구, http cache accounts]
 - `settings.CONFIG_DIR`
 - `settings.IMG_CACHE_MAX`
 - `settings.IMG_PROXY_ALLOW`
+- `settings.SAVED_ITEMS_MAX`가 저장 카드 helper에 추가될 수 있는지 확인한다.
 - `shared.http_tool`
-
-### 의존성 변경 시 주의점
-
-- json, re, urllib.request 변경은 호출 경로와 테스트 더블을 함께 확인한다.
-- threading, time 변경은 호출 경로와 테스트 더블을 함께 확인한다.
-- os 변경은 호출 경로와 테스트 더블을 함께 확인한다.
-- urllib.parse.urlparse 변경은 호출 경로와 테스트 더블을 함께 확인한다.
-- settings.UA 변경은 호출 경로와 테스트 더블을 함께 확인한다.
-- settings.CACHE_TTL 변경은 호출 경로와 테스트 더블을 함께 확인한다.
-- settings.CONFIG_DIR 변경은 호출 경로와 테스트 더블을 함께 확인한다.
-- settings.IMG_CACHE_MAX 변경은 호출 경로와 테스트 더블을 함께 확인한다.
-- settings.IMG_PROXY_ALLOW 변경은 호출 경로와 테스트 더블을 함께 확인한다.
-- shared.http_tool 변경은 호출 경로와 테스트 더블을 함께 확인한다.
 
 ## Dependents
 
 이 모듈을 import하거나 HTTP 라우트로 소비하는 쪽이다.
 
-- `src/main.py` imports `accounts_tool`, `img_proxy_tool`
+- `src/main.py` imports `accounts_tool`, `img_proxy_tool`, `saved_items_tool`
 - `src/youtube/youtube_tool.py` imports `cache_tool`, `http_tool`
 - `src/reels/reels_tool.py` imports `accounts_tool`, `cache_tool`, `http_tool`
 - `src/x_twitter/x_twitter_tool.py` imports `accounts_tool`, `cache_tool`, `http_tool`
 - `src/threads/threads_tool.py` imports `accounts_tool`, `cache_tool`, `http_tool`
 - `src/tiktok/tiktok_tool.py` imports `accounts_tool`, `cache_tool`, `http_tool`
 - `src/ai_news/ai_news_tool.py` imports `cache_tool`, `http_tool`
-- `src/frontend/index.html` consumes `/api/img` and account POST routes through main.py
-
-### 호출자 영향 범위
-
-- `src/main.py` imports `accounts_tool`, `img_proxy_tool` 쪽 응답 shape가 깨지지 않는지 확인한다.
-- `src/youtube/youtube_tool.py` imports `cache_tool`, `http_tool` 쪽 응답 shape가 깨지지 않는지 확인한다.
-- `src/reels/reels_tool.py` imports `accounts_tool`, `cache_tool`, `http_tool` 쪽 응답 shape가 깨지지 않는지 확인한다.
-- `src/x_twitter/x_twitter_tool.py` imports `accounts_tool`, `cache_tool`, `http_tool` 쪽 응답 shape가 깨지지 않는지 확인한다.
-- `src/threads/threads_tool.py` imports `accounts_tool`, `cache_tool`, `http_tool` 쪽 응답 shape가 깨지지 않는지 확인한다.
-- `src/tiktok/tiktok_tool.py` imports `accounts_tool`, `cache_tool`, `http_tool` 쪽 응답 shape가 깨지지 않는지 확인한다.
-- `src/ai_news/ai_news_tool.py` imports `cache_tool`, `http_tool` 쪽 응답 shape가 깨지지 않는지 확인한다.
-- `src/frontend/index.html` consumes `/api/img` and account POST routes through main.py 쪽 응답 shape가 깨지지 않는지 확인한다.
+- `src/trends/trends_tool.py` imports `cache_tool`, `http_tool`
+- `src/frontend/index.html` consumes `/api/img`, account POST routes, saved routes through main.py
 
 ## Sync Checklist
 
@@ -224,107 +201,37 @@ aliases: [shared 모듈, 공유 도구, http cache accounts]
 체크박스는 실제 변경에서 완료 여부를 남기는 용도다.
 
 - [ ] HTTP header 변경 시 `test_http_tool.py` 요청 캡처를 갱신한다.
-- [ ] 캐시 key shape가 바뀌면 모든 기능 모듈의 cache contract 테스트를 확인한다.
+- [ ] `parse_view_count` suffix 변경 시 YouTube 조회수 정렬과 테스트 fixture를 확인한다.
+- [ ] 캐시 key shape나 TTL 저장 shape가 바뀌면 모든 기능 모듈의 cache contract 테스트를 확인한다.
+- [ ] callback TTL 규칙이 바뀌면 trends negative cache와 feed failure route를 확인한다.
 - [ ] CONFIG_DIR 위치가 바뀌면 계정 저장 테스트의 mock patch 경로를 갱신한다.
 - [ ] IMG_PROXY_ALLOW가 바뀌면 프론트 썸네일 도메인과 함께 검토한다.
+- [ ] `.gstatic.com` 제거 시 Google Trends 이미지 렌더링을 별도로 검증한다.
 - [ ] 공유 helper에 새 책임을 넣기 전에 기능 모듈 소유가 아닌지 확인한다.
 
 ### 실패 동작 체크
 
 - [ ] HTTP 오류가 기능 모듈에서 잡히도록 helper는 예외를 삼키지 않는다.
 - [ ] 캐시 force가 참이면 TTL hit라도 fetch_fn을 호출해야 한다.
+- [ ] callback TTL은 실패 결과에 짧은 TTL을 저장할 수 있어야 한다.
 - [ ] 깨진 계정 JSON은 기본값으로 복구되어야 한다.
 - [ ] 이미지 fetch 실패는 502 JSON error로 변환되어야 한다.
 
 ### 문서 동기화 체크
 
 - [ ] `src/shared/__init__.py` 라인 수가 3줄에서 바뀌면 File Tree를 갱신한다.
-- [ ] `src/shared/__init__.py`의 shared 하위 도구 배럴 import 설명이 실제 코드와 어긋나지 않는지 확인한다.
-- [ ] `src/shared/http_tool.py` 라인 수가 29줄에서 바뀌면 File Tree를 갱신한다.
-- [ ] `src/shared/http_tool.py`의 HTTP 요청과 JSON 파싱, 조회수 숫자 파싱 설명이 실제 코드와 어긋나지 않는지 확인한다.
-- [ ] `src/shared/cache_tool.py` 라인 수가 23줄에서 바뀌면 File Tree를 갱신한다.
-- [ ] `src/shared/cache_tool.py`의 메모리 TTL 캐시 설명이 실제 코드와 어긋나지 않는지 확인한다.
 - [ ] `src/shared/accounts_tool.py` 라인 수가 54줄에서 바뀌면 File Tree를 갱신한다.
-- [ ] `src/shared/accounts_tool.py`의 계정 파일 저장소와 source registry 설명이 실제 코드와 어긋나지 않는지 확인한다.
+- [ ] `src/shared/cache_tool.py` 라인 수가 36줄에서 바뀌면 File Tree를 갱신한다.
+- [ ] `src/shared/http_tool.py` 라인 수가 52줄에서 바뀌면 File Tree를 갱신한다.
 - [ ] `src/shared/img_proxy_tool.py` 라인 수가 32줄에서 바뀌면 File Tree를 갱신한다.
-- [ ] `src/shared/img_proxy_tool.py`의 썸네일 이미지 프록시와 allowlist 캐시 설명이 실제 코드와 어긋나지 않는지 확인한다.
-- [ ] `src/shared/test_http_tool.py` 라인 수가 59줄에서 바뀌면 File Tree를 갱신한다.
-- [ ] `src/shared/test_http_tool.py`의 HTTP helper 단위 테스트 설명이 실제 코드와 어긋나지 않는지 확인한다.
-- [ ] `src/shared/test_cache_tool.py` 라인 수가 48줄에서 바뀌면 File Tree를 갱신한다.
-- [ ] `src/shared/test_cache_tool.py`의 TTL 캐시 단위 테스트 설명이 실제 코드와 어긋나지 않는지 확인한다.
-- [ ] `src/shared/test_accounts_tool.py` 라인 수가 62줄에서 바뀌면 File Tree를 갱신한다.
-- [ ] `src/shared/test_accounts_tool.py`의 계정 저장소 단위 테스트 설명이 실제 코드와 어긋나지 않는지 확인한다.
-- [ ] `src/shared/test_img_proxy_tool.py` 라인 수가 47줄에서 바뀌면 File Tree를 갱신한다.
-- [ ] `src/shared/test_img_proxy_tool.py`의 이미지 프록시 단위 테스트 설명이 실제 코드와 어긋나지 않는지 확인한다.
-
-### 테스트 동기화 체크
-
-- [ ] `HttpToolTest.test_parse_view_count_digits_and_empty`가 변경된 계약을 검증하는지 확인한다.
-- [ ] `HttpToolTest.test_http_get_header_and_payload_construction`가 변경된 계약을 검증하는지 확인한다.
-- [ ] `CacheToolTest.test_cached_hit`가 변경된 계약을 검증하는지 확인한다.
-- [ ] `CacheToolTest.test_cached_ttl_expiry`가 변경된 계약을 검증하는지 확인한다.
-- [ ] `CacheToolTest.test_cached_force`가 변경된 계약을 검증하는지 확인한다.
-- [ ] `AccountsToolTest.test_load_save_roundtrip`가 변경된 계약을 검증하는지 확인한다.
-- [ ] `AccountsToolTest.test_load_corrupt_json_falls_back_to_defaults`가 변경된 계약을 검증하는지 확인한다.
-- [ ] `AccountsToolTest.test_registry_add_remove_lowercases_by_default`가 변경된 계약을 검증하는지 확인한다.
-- [ ] `AccountsToolTest.test_registry_preserves_case_for_x`가 변경된 계약을 검증하는지 확인한다.
-- [ ] `AccountsToolTest.test_unknown_source`가 변경된 계약을 검증하는지 확인한다.
-- [ ] `ImgProxyToolTest.test_allowlist_rejects_http_and_disallowed_host`가 변경된 계약을 검증하는지 확인한다.
-- [ ] `ImgProxyToolTest.test_cache_hit_skips_fetch`가 변경된 계약을 검증하는지 확인한다.
-- [ ] `ImgProxyToolTest.test_cache_clear_at_max`가 변경된 계약을 검증하는지 확인한다.
+- [ ] `src/shared/saved_items_tool.py` 라인 수가 60줄에서 바뀌면 File Tree를 갱신한다.
+- [ ] shared 테스트 파일 라인 수가 바뀌면 File Tree를 갱신한다.
 
 ## 변경 기록
 
-- 2026-07-07: 실제 소스 기준으로 str_func 모듈 문서를 작성했다.
+- 2026-07-07: suffix 조회수 파서, callback TTL, `ttl_for`, `.gstatic.com` 이미지 allowlist, saved items helper를 문서에 동기화했다.
 
 ## 문서 연결
 
-- [ ] 동기화 보강 1: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 2: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 3: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 4: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 5: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 6: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 7: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 8: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 9: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 10: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 11: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 12: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 13: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 14: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 15: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 16: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 17: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 18: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 19: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 20: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 21: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 22: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 23: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 24: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 25: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 26: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 27: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 28: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 29: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 30: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 31: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 32: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 33: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 34: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 35: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 36: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 37: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 38: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 39: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 40: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 41: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 42: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 43: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 44: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 45: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
-- [ ] 동기화 보강 46: 함수명, 라우트명, 응답 키, 테스트 이름 중 하나라도 바뀌면 이 문서의 해당 항목을 같이 고친다.
 - 이전: [[frontend.md]]
 - 다음: [[youtube.md]]
-
