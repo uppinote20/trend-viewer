@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.env
+.DS_Store
+.codexclaw/
+# runtime account files are user data (upstream stores them next to server.py; port stores in config/)
+config/*_accounts.json
