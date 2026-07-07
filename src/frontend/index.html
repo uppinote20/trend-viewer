@@ -35,11 +35,11 @@
     --transition-slow: 350ms cubic-bezier(.16,1,.3,1);
     --transition-reduced-duration: 0.01ms;
     --c-youtube: #ff0000;
-    --c-shorts: #ff0000;
+    --c-shorts: #ff6b35;
     --c-ai: var(--accent);
     --c-reels: #e1306c;
     --c-x: #1d9bf0;
-    --c-threads: #000000;
+    --c-threads: #ffffff;
     --c-tiktok: #00f2ea;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -242,7 +242,7 @@
   .home-row:active { transform: scale(0.98); }
   .home-row-thumb { width: 88px; aspect-ratio: 16/9; border-radius: 7px; object-fit: cover; background: var(--bg); }
   .home-row-thumb.vertical { aspect-ratio: 9/12; }
-  .home-row-rank { color: #ffd166; font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .home-row-rank { color: var(--home-color, var(--accent)); font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums; }
   .home-row-title { margin-top: 2px; font-size: 13px; font-weight: 650; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .home-row-meta { margin-top: 5px; display: flex; flex-wrap: wrap; gap: 4px 8px; color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
   .home-row-meta .hot { color: var(--home-color, var(--accent)); font-weight: 750; }
