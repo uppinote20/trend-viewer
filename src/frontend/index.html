@@ -56,8 +56,8 @@
     outline-offset: 2px;
   }
   header { position: sticky; top: 0; z-index: 50; background: rgba(15,17,21,.92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-  header h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
-  header h1 span { color: var(--accent); font-weight: 800; }
+  header h1 { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; color: var(--text-secondary); }
+  header h1 .mark { color: var(--text); font-weight: 700; }
   #today { color: var(--muted); font-size: 13px; }
   #searchForm { margin-left: auto; display: flex; gap: 6px; }
   #searchInput { background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; padding: 8px 13px; color: var(--text); font-size: 13px; width: 230px; transition: border-color var(--transition), background-color var(--transition); }
@@ -314,7 +314,7 @@
 </svg>
 <a href="#main" class="skip-link">본문으로 건너뛰기</a>
 <header>
-  <h1>데일리 <span>트렌드</span> 뷰어</h1>
+  <h1><span class="mark">trend</span>viewer</h1>
   <div id="today"></div>
   <form id="searchForm">
     <input id="searchInput" type="search" placeholder="유튜브 검색어 입력 (예: AI 광고)">
