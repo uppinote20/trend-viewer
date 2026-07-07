@@ -29,10 +29,15 @@ def register():
 def _tiktok_item(v):
     author = v.get("author", {}) if isinstance(v.get("author"), dict) else {}
     handle = author.get("unique_id", "")
+    if not isinstance(handle, str):
+        handle = ""
+    nickname = author.get("nickname", handle)
+    if not isinstance(nickname, str):
+        nickname = handle
     vid = v.get("video_id", "")
     return {
         "account": handle,
-        "name": author.get("nickname", handle),
+        "name": nickname,
         "title": (v.get("title") or "").strip() or "(설명 없음)",
         "views": v.get("play_count") or 0,
         "likes": v.get("digg_count") or 0,

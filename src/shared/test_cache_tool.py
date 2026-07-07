@@ -23,6 +23,14 @@ class CacheToolTest(unittest.TestCase):
         self.assertEqual(fetched_at2, 101.0)
         self.assertEqual(calls, [1])
 
+    def test_cached_hit_preserves_seeded_fetched_at(self):
+        cache_tool._cache["k"] = (123.0, "old")
+        with mock.patch("shared.cache_tool.settings.CACHE_TTL", 10), mock.patch("time.time", return_value=125.0):
+            result, fetched_at = cache_tool.cached("k", False, lambda: self.fail("cache hit should not fetch"))
+
+        self.assertEqual(result, "old")
+        self.assertEqual(fetched_at, 123.0)
+
     def test_cached_ttl_expiry(self):
         calls = []
         cache_tool._cache["k"] = (10.0, "old")

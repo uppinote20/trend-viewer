@@ -9,7 +9,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 from ai_news import ai_news_tool
-from settings import BASE_DIR, PORT
+from settings import BASE_DIR, CACHE_TTL, PORT
 from shared import accounts_tool, img_proxy_tool, saved_items_tool
 from reels import reels_tool
 from threads import threads_tool
@@ -65,32 +65,32 @@ class Handler(BaseHTTPRequestHandler):
             self._send(400, {"error": "unknown category"})
             return
         videos, fetched_at = youtube_tool.get_videos(category, period, shorts, force, enrich, query)
-        self._send(200, {"videos": videos[:60], "fetchedAt": fetched_at})
+        self._send(200, {"videos": videos[:60], "fetchedAt": fetched_at, "cacheTtl": CACHE_TTL})
 
     def _handle_reels(self, qs):
         force = qs.get("force", ["0"])[0] == "1"
         reels, accounts, fetched_at = reels_tool.get_reels(force)
-        self._send(200, {"reels": reels[:80], "accounts": accounts, "fetchedAt": fetched_at})
+        self._send(200, {"reels": reels[:80], "accounts": accounts, "fetchedAt": fetched_at, "cacheTtl": CACHE_TTL})
 
     def _handle_tiktok(self, qs):
         force = qs.get("force", ["0"])[0] == "1"
         posts, accounts, fetched_at = tiktok_tool.get_tiktok(force)
-        self._send(200, {"posts": posts[:100], "accounts": accounts, "fetchedAt": fetched_at})
+        self._send(200, {"posts": posts[:100], "accounts": accounts, "fetchedAt": fetched_at, "cacheTtl": CACHE_TTL})
 
     def _handle_x(self, qs):
         force = qs.get("force", ["0"])[0] == "1"
         posts, accounts, fetched_at = x_twitter_tool.get_x_posts(force)
-        self._send(200, {"posts": posts, "accounts": accounts, "fetchedAt": fetched_at})
+        self._send(200, {"posts": posts, "accounts": accounts, "fetchedAt": fetched_at, "cacheTtl": CACHE_TTL})
 
     def _handle_threads(self, qs):
         force = qs.get("force", ["0"])[0] == "1"
         posts, accounts, fetched_at = threads_tool.get_threads_posts(force)
-        self._send(200, {"posts": posts, "accounts": accounts, "fetchedAt": fetched_at})
+        self._send(200, {"posts": posts, "accounts": accounts, "fetchedAt": fetched_at, "cacheTtl": CACHE_TTL})
 
     def _handle_ai(self, qs):
         force = qs.get("force", ["0"])[0] == "1"
         data, fetched_at = ai_news_tool.get_ai_data(force)
-        self._send(200, {**data, "fetchedAt": fetched_at})
+        self._send(200, {**data, "fetchedAt": fetched_at, "cacheTtl": CACHE_TTL})
 
     def _handle_oembed(self, qs):
         self._send(200, ai_news_tool.fetch_oembed(qs.get("url", [""])[0]))

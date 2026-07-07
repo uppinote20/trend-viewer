@@ -52,6 +52,14 @@ class TiktokToolTest(unittest.TestCase):
         self.assertEqual(item["id"], "v1")
         self.assertEqual(item["createdAt"], 123)
 
+    def test_tiktok_item_coerces_non_string_author_fields(self):
+        video = _video("v2")
+        video["author"] = {"unique_id": {"13": 812608869}, "nickname": {"6": 1}}
+        item = tiktok_tool._tiktok_item(video)
+
+        self.assertEqual(item["account"], "")
+        self.assertEqual(item["name"], "")
+
     def test_fetch_tiktok_user_parses_tikwm_response(self):
         captured = {}
 
