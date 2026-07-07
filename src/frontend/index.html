@@ -42,6 +42,12 @@
     --c-tiktok: #00f2ea;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { scrollbar-width: thin; scrollbar-color: var(--surface-3) transparent; }
+  ::selection { background: rgba(255,77,109,0.3); color: var(--text); }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--surface-3); border: 2px solid transparent; border-radius: 999px; background-clip: content-box; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--surface-4); background-clip: content-box; }
   body { background: var(--bg); color: var(--text); font-family: 'Pretendard Variable', 'Pretendard', -apple-system, 'Apple SD Gothic Neo', sans-serif; letter-spacing: 0; }
   button, input, a { font: inherit; }
   button:focus-visible, a:focus-visible, input:focus-visible, iframe:focus-visible {
@@ -63,9 +69,11 @@
 
   .tabs { display: flex; gap: 8px; padding: 14px 24px 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
   .tabs::-webkit-scrollbar { display: none; }
-  .tab { padding: 9px 18px 8px; border-radius: 8px 8px 0 0; background: transparent; color: var(--muted); border: 1px solid transparent; border-bottom: 2px solid transparent; cursor: pointer; font-size: 14px; font-weight: 700; transition: background-color var(--transition), border-color var(--transition), color var(--transition), transform var(--transition-fast); }
+  .tab { position: relative; overflow: hidden; padding: 9px 18px 8px; border-radius: 8px 8px 0 0; background: transparent; color: var(--muted); border: 1px solid transparent; border-bottom: 2px solid transparent; cursor: pointer; font-size: 14px; font-weight: 700; transition: background-color var(--transition), border-color var(--transition), color var(--transition), transform var(--transition-fast); }
+  .tab::after { content: ""; position: absolute; left: 50%; bottom: 0; width: 0; height: 2px; transform: translateX(-50%); border-radius: 2px 2px 0 0; background: var(--tab-color, var(--accent)); opacity: 0; transition: width var(--transition), opacity var(--transition-fast); }
+  .tab[aria-selected="true"]::after { width: calc(100% - 20px); opacity: 1; }
   .tab:hover { color: var(--text-secondary); border-color: var(--border-hover); border-bottom-color: transparent; }
-  .tab.active { background: var(--surface-1); color: var(--text); border-color: var(--border); border-bottom-color: var(--tab-color, var(--accent)); }
+  .tab.active { background: var(--surface-1); color: var(--text); border-color: var(--border); border-bottom-color: transparent; }
   .toolbar { background: var(--surface-1); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
   .chips { display: flex; gap: 6px; flex-wrap: wrap; }
   .chip { padding: 6px 13px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); color: var(--muted); font-size: 13px; cursor: pointer; white-space: nowrap; transition: background-color var(--transition), border-color var(--transition), color var(--transition), transform var(--transition-fast); }
@@ -77,8 +85,8 @@
   main { padding: 20px 24px 60px; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
   .grid.shorts { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
-  .trend-card, .card { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; cursor: pointer; transition: transform var(--transition-fast), border-color var(--transition-fast), background-color var(--transition); position: relative; }
-  .trend-card:hover, .card:hover { transform: translateY(-3px); border-color: var(--border-hover); }
+  .trend-card, .card { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; cursor: pointer; transition: transform var(--transition-fast), box-shadow var(--transition), border-color var(--transition-fast); position: relative; }
+  .trend-card:hover, .card:hover { transform: translateY(-2px); border-color: var(--border-hover); box-shadow: var(--shadow-md); }
   .trend-card:active, .card:active, .linkcard:active, .modelcard:active, .newsitem:active, .postcard:active { transform: scale(0.98); }
   .seen .thumb, .seen .pmedia, .seen .title, .seen .ptext, .seen .home-row-thumb, .seen .home-row-title, .seen .saved-thumb, .seen .saved-title { opacity: .5; transition: opacity var(--transition-fast); }
   .seen:hover .thumb, .seen:focus-visible .thumb, .seen:hover .pmedia, .seen:focus-visible .pmedia, .seen:hover .title, .seen:focus-visible .title, .seen:hover .ptext, .seen:focus-visible .ptext, .seen:hover .home-row-thumb, .seen:focus-visible .home-row-thumb, .seen:hover .home-row-title, .seen:focus-visible .home-row-title, .seen:hover .saved-thumb, .seen:focus-visible .saved-thumb, .seen:hover .saved-title, .seen:focus-visible .saved-title { opacity: 1; }
@@ -225,8 +233,8 @@
   .home-jump:active { transform: scale(0.98); }
   .home-section-body { padding: 10px; }
   .home-rowgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px; }
-  .home-row { display: grid; grid-template-columns: 88px 1fr; gap: 10px; align-items: center; min-height: 72px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 8px; color: var(--text); cursor: pointer; transition: transform var(--transition-fast), border-color var(--transition-fast), background-color var(--transition); }
-  .home-row:hover { border-color: var(--border-hover); background: var(--surface-3); transform: translateY(-1px); }
+  .home-row { display: grid; grid-template-columns: 88px 1fr; gap: 10px; align-items: center; min-height: 72px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 8px; color: var(--text); cursor: pointer; transition: transform var(--transition-fast), box-shadow var(--transition), border-color var(--transition-fast); }
+  .home-row:hover { border-color: var(--border-hover); transform: translateY(-2px); box-shadow: var(--shadow-md); }
   .home-row:active { transform: scale(0.98); }
   .home-row-thumb { width: 88px; aspect-ratio: 16/9; border-radius: 7px; object-fit: cover; background: var(--bg); }
   .home-row-thumb.vertical { aspect-ratio: 9/12; }
@@ -273,6 +281,12 @@
   <symbol id="i-repeat" viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></symbol>
   <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
   <symbol id="i-play" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></symbol>
+  <symbol id="i-youtube" viewBox="0 0 24 24"><path fill="currentColor" d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></symbol>
+  <symbol id="i-shorts" viewBox="0 0 24 24"><path fill="currentColor" d="M10 14.65v-5.3L15 12l-5 2.65zM17.77 3.77 16.35 5.19A6.01 6.01 0 0 1 18 10c0 .34-.03.67-.09 1h1.59c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-2c-.55 1.95-1.9 3.55-3.72 4.45l1.07 1.07c.39.39.39 1.02 0 1.41a.996.996 0 0 1-1.41 0L12 19.5l-1.44 1.44a.996.996 0 0 1-1.41 0 .996.996 0 0 1 0-1.41l1.07-1.07A6.013 6.013 0 0 1 6.5 14H4.5c-.83 0-1.5-.67-1.5-1.5S3.67 11 4.5 11h1.59c-.06-.33-.09-.66-.09-1 0-1.85.83-3.51 2.13-4.63L6.23 3.77a.996.996 0 0 1 0-1.41.996.996 0 0 1 1.41 0L12 6.73l4.36-4.37c.39-.39 1.02-.39 1.41 0 .39.39.39 1.03 0 1.41zM12 16c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z"/></symbol>
+  <symbol id="i-instagram" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></symbol>
+  <symbol id="i-x-logo" viewBox="0 0 24 24"><path fill="currentColor" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></symbol>
+  <symbol id="i-threads" viewBox="0 0 24 24"><path fill="currentColor" d="M12.186 24h-.007C5.965 24 2.634 20.114 2.634 15.555v-.043c.058-4.532 3.456-7.37 7.394-7.37 3.07 0 5.292 1.67 6.074 3.47l-2.387.82c-.525-1.162-1.81-2.053-3.687-2.053-2.456 0-4.553 1.767-4.596 5.137v.043c0 3.34 1.927 6.204 6.38 6.204 2.254 0 3.724-.84 4.428-2.226.528-1.04.688-2.378.688-3.24v-.292c-.015-.154-.1-.287-.3-.376a9.6 9.6 0 0 0-1.56-.393c-1.205-.227-2.596-.226-3.587.35-.765.444-1.28 1.168-1.28 2.204 0 1.364.887 2.258 2.25 2.258.99 0 1.83-.48 2.328-1.078l1.606 1.606C15.14 21.634 13.6 22.488 11.79 22.488c-2.52 0-4.488-1.79-4.488-4.488 0-2.07 1.248-3.666 3.305-4.368 1.31-.448 2.893-.486 4.295-.228.734.135 1.42.338 2.005.634 1.168.59 1.725 1.612 1.748 2.887v.33c0 1.14-.228 2.866-1.048 4.2C16.47 23.21 14.6 24 12.186 24z"/></symbol>
+  <symbol id="i-tiktok" viewBox="0 0 24 24"><path fill="currentColor" d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></symbol>
   <symbol id="i-film" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/><line x1="17" y1="17" x2="22" y2="17"/></symbol>
   <symbol id="i-scissors" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></symbol>
   <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></symbol>
@@ -420,15 +434,16 @@
 <script>
 const VIEWS = [
   { id: 'home', label: '홈', svgIcon: 'i-home', color: '--accent', elementId: 'homeView', load: loadHome, toolbar: 'none', hasForce: true },
-  { id: 'youtube', label: '영상', svgIcon: 'i-film', color: '--c-youtube', elementId: 'videoView', load: (f) => loadVideos(f), toolbar: 'categories', hasForce: true },
-  { id: 'shorts', label: '쇼츠', svgIcon: 'i-scissors', color: '--c-shorts', elementId: 'videoView', load: (f) => loadVideos(f), toolbar: 'categories', hasForce: true },
+  { id: 'youtube', label: '영상', svgIcon: 'i-youtube', color: '--c-youtube', elementId: 'videoView', load: (f) => loadVideos(f), toolbar: 'categories', hasForce: true },
+  { id: 'shorts', label: '쇼츠', svgIcon: 'i-shorts', color: '--c-shorts', elementId: 'videoView', load: (f) => loadVideos(f), toolbar: 'categories', hasForce: true },
   { id: 'ai', label: 'AI', svgIcon: 'i-cpu', color: '--c-ai', elementId: 'aiView', load: (f) => loadAI(f), toolbar: 'none', hasForce: true },
-  { id: 'reels', label: '릴스', svgIcon: 'i-camera', color: '--c-reels', elementId: 'reelsView', load: (f) => loadReels(f), toolbar: 'accounts', hasForce: true },
-  { id: 'x', label: 'X', svgIcon: 'i-at-sign', color: '--c-x', elementId: 'xView', load: (f) => loadSocial('x', f), toolbar: 'accounts', hasForce: true },
-  { id: 'threads', label: '스레드', svgIcon: 'i-at-sign', color: '--c-threads', elementId: 'threadsView', load: (f) => loadSocial('threads', f), toolbar: 'accounts', hasForce: true },
-  { id: 'tiktok', label: '틱톡', svgIcon: 'i-music', color: '--c-tiktok', elementId: 'tiktokView', load: (f) => loadTikTok(f), toolbar: 'accounts', hasForce: true },
+  { id: 'reels', label: '릴스', svgIcon: 'i-instagram', color: '--c-reels', elementId: 'reelsView', load: (f) => loadReels(f), toolbar: 'accounts', hasForce: true },
+  { id: 'x', label: 'X', svgIcon: 'i-x-logo', color: '--c-x', elementId: 'xView', load: (f) => loadSocial('x', f), toolbar: 'accounts', hasForce: true },
+  { id: 'threads', label: '스레드', svgIcon: 'i-threads', color: '--c-threads', elementId: 'threadsView', load: (f) => loadSocial('threads', f), toolbar: 'accounts', hasForce: true },
+  { id: 'tiktok', label: '틱톡', svgIcon: 'i-tiktok', color: '--c-tiktok', elementId: 'tiktokView', load: (f) => loadTikTok(f), toolbar: 'accounts', hasForce: true },
   { id: 'saved', label: '저장됨', svgIcon: 'i-bookmark', color: '--accent', elementId: 'savedView', load: () => renderSaved(), toolbar: 'none' },
 ];
+const FILLED_PLATFORM_ICONS = new Set(['i-youtube', 'i-shorts', 'i-instagram', 'i-x-logo', 'i-threads', 'i-tiktok']);
 
 const state = { tab: 'home', category: '전체', period: 'week', categories: ['전체'], search: '' };
 const loadedViews = new Set();
@@ -632,7 +647,7 @@ function renderTabs() {
     btn.setAttribute('aria-controls', view.elementId);
     btn.style.setProperty('--tab-color', `var(${view.color})`);
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('class', 'icon icon-sm');
+    svg.setAttribute('class', 'icon icon-sm' + (FILLED_PLATFORM_ICONS.has(view.svgIcon) ? ' icon-filled' : ''));
     const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
     use.setAttribute('href', '#' + view.svgIcon);
     svg.appendChild(use);
@@ -1613,13 +1628,13 @@ function renderSaved() {
 
 /* ---------- 홈 브리핑 ---------- */
 const HOME_SECTIONS = [
-  { key: 'youtube', tab: 'youtube', label: '영상', svgIcon: 'i-film', color: '--c-youtube', url: force => `/api/videos?period=week${force ? '&force=1' : ''}`, sourceName: '유튜브' },
-  { key: 'shorts', tab: 'shorts', label: '쇼츠', svgIcon: 'i-scissors', color: '--c-shorts', url: force => `/api/videos?shorts=1&period=week${force ? '&force=1' : ''}`, sourceName: '쇼츠' },
+  { key: 'youtube', tab: 'youtube', label: '영상', svgIcon: 'i-youtube', color: '--c-youtube', url: force => `/api/videos?period=week${force ? '&force=1' : ''}`, sourceName: '유튜브' },
+  { key: 'shorts', tab: 'shorts', label: '쇼츠', svgIcon: 'i-shorts', color: '--c-shorts', url: force => `/api/videos?shorts=1&period=week${force ? '&force=1' : ''}`, sourceName: '쇼츠' },
   { key: 'ai', tab: 'ai', label: 'AI', svgIcon: 'i-cpu', color: '--c-ai', url: force => `/api/ai${force ? '?force=1' : ''}`, sourceName: 'AI 영상' },
-  { key: 'reels', tab: 'reels', label: '릴스', svgIcon: 'i-camera', color: '--c-reels', url: force => `/api/reels${force ? '?force=1' : ''}`, sourceName: '릴스' },
-  { key: 'x', tab: 'x', label: 'X', svgIcon: 'i-at-sign', color: '--c-x', url: force => `/api/x${force ? '?force=1' : ''}`, sourceName: 'X' },
-  { key: 'threads', tab: 'threads', label: '스레드', svgIcon: 'i-at-sign', color: '--c-threads', url: force => `/api/threads${force ? '?force=1' : ''}`, sourceName: '스레드' },
-  { key: 'tiktok', tab: 'tiktok', label: '틱톡', svgIcon: 'i-music', color: '--c-tiktok', url: force => `/api/tiktok${force ? '?force=1' : ''}`, sourceName: '틱톡' },
+  { key: 'reels', tab: 'reels', label: '릴스', svgIcon: 'i-instagram', color: '--c-reels', url: force => `/api/reels${force ? '?force=1' : ''}`, sourceName: '릴스' },
+  { key: 'x', tab: 'x', label: 'X', svgIcon: 'i-x-logo', color: '--c-x', url: force => `/api/x${force ? '?force=1' : ''}`, sourceName: 'X' },
+  { key: 'threads', tab: 'threads', label: '스레드', svgIcon: 'i-threads', color: '--c-threads', url: force => `/api/threads${force ? '?force=1' : ''}`, sourceName: '스레드' },
+  { key: 'tiktok', tab: 'tiktok', label: '틱톡', svgIcon: 'i-tiktok', color: '--c-tiktok', url: force => `/api/tiktok${force ? '?force=1' : ''}`, sourceName: '틱톡' },
 ];
 
 async function fetchHomeJson(section, force) {
@@ -1630,7 +1645,7 @@ async function fetchHomeJson(section, force) {
 
 function homeIcon(svgIcon, size = 'icon-sm') {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.setAttribute('class', `icon ${size}`);
+  svg.setAttribute('class', `icon ${size}${FILLED_PLATFORM_ICONS.has(svgIcon) ? ' icon-filled' : ''}`);
   const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
   use.setAttribute('href', '#' + svgIcon);
   svg.appendChild(use);

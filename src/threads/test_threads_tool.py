@@ -1,8 +1,10 @@
 import json
+import subprocess
 import tempfile
 import unittest
 from unittest import mock
 
+import settings
 from shared import accounts_tool, cache_tool
 from threads import threads_tool
 
@@ -74,23 +76,12 @@ class ThreadsToolTest(unittest.TestCase):
         self.assertEqual(posts[0]["createdAt"], 123)
 
     def test_threads_lsd_and_userid_uses_ig_app_id(self):
-        html = b'"LSD",[],{"token":"lsd-token"}'
-        captured = {}
-
-        def fake_http_json(url, headers=None, timeout=15):
-            captured["url"] = url
-            captured["headers"] = headers
-            captured["timeout"] = timeout
-            return {"data": {"user": {"id": "42"}}}
-
-        with (
-            mock.patch(
-                "threads.threads_tool.http_tool.http_get",
-                return_value=("text/html", html),
-            ),
-            mock.patch(
-                "threads.threads_tool.http_tool.http_json", side_effect=fake_http_json
-            ),
+        html = b'"LSD",[],{"token":"lsd-token"} "user_id":"42"'
+        fake_result = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout=html, stderr=b""
+        )
+        with mock.patch(
+            "threads.threads_tool.subprocess.run", return_value=fake_result
         ):
             lsd, user_id, lsd_error, user_id_error = threads_tool._threads_lsd_and_userid("Open AI")
 
@@ -98,12 +89,6 @@ class ThreadsToolTest(unittest.TestCase):
         self.assertEqual(user_id, "42")
         self.assertIsNone(lsd_error)
         self.assertIsNone(user_id_error)
-        self.assertEqual(
-            captured["url"],
-            "https://www.instagram.com/api/v1/users/web_profile_info/?username=Open%20AI",
-        )
-        self.assertEqual(captured["headers"], {"x-ig-app-id": threads_tool.IG_APP_ID})
-        self.assertEqual(captured["timeout"], 12)
 
     def test_fetch_threads_posts_doc_id_loop_and_user_agent_header(self):
         seen_doc_ids = []
@@ -112,7 +97,8 @@ class ThreadsToolTest(unittest.TestCase):
         def fake_urlopen(req, timeout=15):
             self.assertEqual(timeout, 12)
             body = req.data.decode()
-            for doc_id in threads_tool.THREADS_DOC_IDS:
+            test_ids = ["fake_stale_id", "fake_working_id"]
+            for doc_id in test_ids:
                 if "doc_id=%s" % doc_id in body:
                     seen_doc_ids.append(doc_id)
                     break
@@ -127,20 +113,21 @@ class ThreadsToolTest(unittest.TestCase):
                 return_value=("lsd-token", "42", None, None),
             ),
             mock.patch("threads.threads_tool.urllib.request.urlopen", fake_urlopen),
+            mock.patch(
+                "threads.threads_tool._load_doc_ids",
+                return_value=["fake_stale_id", "fake_working_id"],
+            ),
         ):
             posts, error = threads_tool.fetch_threads_posts("openai")
 
-        self.assertEqual(seen_doc_ids, threads_tool.THREADS_DOC_IDS[:2])
+        self.assertEqual(seen_doc_ids, ["fake_stale_id", "fake_working_id"])
         self.assertIsNone(error)
         self.assertEqual(posts[0]["text"], "ok")
         self.assertEqual(
             seen_headers[0]["User-agent"],
-            threads_tool.UA,
+            settings.UA,
         )
-        self.assertEqual(
-            seen_headers[0]["X-ig-app-id"],
-            threads_tool.IG_APP_ID_THREADS,
-        )
+        self.assertEqual(seen_headers[0]["X-ig-app-id"], threads_tool.IG_APP_ID_THREADS)
 
     def test_fetch_threads_posts_all_failures_and_missing_ids(self):
         with mock.patch(
@@ -164,6 +151,28 @@ class ThreadsToolTest(unittest.TestCase):
             posts, error = threads_tool.fetch_threads_posts("openai")
             self.assertEqual(posts, [])
             self.assertEqual(error, {"account": "openai", "kind": "timeout", "code": None})
+
+    def test_fetch_threads_posts_doc_id_expired_flags(self):
+        not_found_resp = _FakeResponse(
+            {"errors": [{"message": "The GraphQL document was not found."}]}
+        )
+        with (
+            mock.patch(
+                "threads.threads_tool._threads_lsd_and_userid",
+                return_value=("lsd-token", "42", None, None),
+            ),
+            mock.patch(
+                "threads.threads_tool.urllib.request.urlopen",
+                return_value=not_found_resp,
+            ),
+            mock.patch(
+                "threads.threads_tool._flag_doc_id_expired"
+            ) as mock_flag,
+        ):
+            posts, error = threads_tool.fetch_threads_posts("openai")
+            self.assertEqual(posts, [])
+            self.assertEqual(error["kind"], "doc_id_expired")
+            mock_flag.assert_called_once()
 
     def test_get_threads_posts_cache_key_includes_accounts_tuple(self):
         path = accounts_tool.get_source("threads")["path"]

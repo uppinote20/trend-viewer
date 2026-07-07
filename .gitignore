@@ -6,3 +6,5 @@ __pycache__/
 # runtime account files are user data (upstream stores them next to server.py; port stores in config/)
 config/*_accounts.json
 config/saved_items.json
+config/threads_doc_ids.json
+config/.threads_docid_expired
