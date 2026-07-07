@@ -41,6 +41,7 @@
     --c-x: #1d9bf0;
     --c-threads: #ffffff;
     --c-tiktok: #00f2ea;
+    --c-trends: #22c55e;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { scrollbar-width: thin; scrollbar-color: var(--surface-3) transparent; }
@@ -56,8 +57,8 @@
     outline-offset: 2px;
   }
   header { position: sticky; top: 0; z-index: 50; background: rgba(15,17,21,.92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-  header h1 { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; color: var(--text-secondary); }
-  header h1 .mark { color: var(--text); font-weight: 700; }
+  header h1 { font-size: 20px; font-weight: 900; letter-spacing: -0.03em; color: var(--text); text-transform: uppercase; }
+  header h1 .mark { color: var(--accent); }
   #today { color: var(--muted); font-size: 13px; }
   #searchForm { margin-left: auto; display: flex; gap: 6px; }
   #searchInput { background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; padding: 8px 13px; color: var(--text); font-size: 13px; width: 230px; transition: border-color var(--transition), background-color var(--transition); }
@@ -70,7 +71,7 @@
 
   .tabs { display: flex; gap: 8px; padding: 14px 24px 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
   .tabs::-webkit-scrollbar { display: none; }
-  .tab { position: relative; overflow: hidden; padding: 9px 18px 8px; border-radius: 8px 8px 0 0; background: transparent; color: var(--muted); border: 1px solid transparent; border-bottom: 2px solid transparent; cursor: pointer; font-size: 14px; font-weight: 700; transition: background-color var(--transition), border-color var(--transition), color var(--transition), transform var(--transition-fast); }
+  .tab { position: relative; overflow: hidden; padding: 9px 18px 8px; border-radius: 8px 8px 0 0; background: transparent; color: var(--muted); border: 1px solid transparent; border-bottom: 2px solid transparent; cursor: pointer; font-size: 14px; font-weight: 700; white-space: nowrap; flex-shrink: 0; transition: background-color var(--transition), border-color var(--transition), color var(--transition), transform var(--transition-fast); }
   .tab::after { content: ""; position: absolute; left: 50%; bottom: 0; width: 0; height: 2px; transform: translateX(-50%); border-radius: 2px 2px 0 0; background: var(--tab-color, var(--accent)); opacity: 0; transition: width var(--transition), opacity var(--transition-fast); }
   .tab[aria-selected="true"]::after { width: calc(100% - 20px); opacity: 1; }
   .tab:hover { color: var(--text-secondary); border-color: var(--border-hover); border-bottom-color: transparent; }
@@ -79,6 +80,25 @@
   .chips { display: flex; gap: 6px; flex-wrap: wrap; }
   .chip { padding: 6px 13px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); color: var(--muted); font-size: 13px; cursor: pointer; white-space: nowrap; transition: background-color var(--transition), border-color var(--transition), color var(--transition), transform var(--transition-fast); }
   .chip.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+  .countries { display: inline-flex; background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; padding: 2px; gap: 2px; }
+  .country { padding: 4px 12px; border-radius: 6px; border: none; background: transparent; color: var(--muted); font-size: 13px; cursor: pointer; transition: background-color var(--transition-fast), color var(--transition-fast); }
+  .country.active { background: var(--surface-3); color: var(--text); font-weight: 700; }
+  .trendlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(360px, 100%), 1fr)); gap: 12px; }
+  .trendcard { display: flex; gap: 12px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; padding: 14px; transition: border-color var(--transition); }
+  .trendcard:hover { border-color: var(--border-hover); }
+  .trendcard .trank { font-weight: 800; font-size: 15px; color: var(--c-trends); min-width: 26px; text-align: center; }
+  .trendcard .tbody { flex: 1; min-width: 0; }
+  .trendcard .tkeyword { font-size: 15px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .trendcard .tkeyword a { color: var(--text); text-decoration: none; }
+  .trendcard .tkeyword a:hover { text-decoration: underline; }
+  .trendcard .ttraffic { font-size: 11px; font-weight: 700; color: var(--c-trends); background: rgba(34,197,94,.14); border-radius: 6px; padding: 2px 7px; }
+  .trendcard .ttime { font-size: 12px; color: var(--muted); font-weight: 400; }
+  .trendcard .tnews { margin-top: 8px; display: flex; flex-direction: column; gap: 5px; }
+  .trendcard .tnews a { font-size: 12.5px; color: var(--text-secondary); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .trendcard .tnews a:hover { color: var(--text); }
+  .trendcard .tnews .tsrc { color: var(--muted); }
+  .trendcard .tpic { width: 68px; height: 68px; border-radius: 8px; object-fit: cover; flex-shrink: 0; background: var(--surface-2); }
+  #aiNewsChips { margin: 0 0 12px; }
   .periods { display: flex; gap: 4px; margin-left: auto; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 3px; }
   .period { padding: 5px 12px; border-radius: 8px; background: transparent; border: none; color: var(--muted); font-size: 13px; cursor: pointer; transition: background-color var(--transition), color var(--transition), transform var(--transition-fast); }
   .period.active { background: var(--accent2); color: #fff; font-weight: 700; }
@@ -175,6 +195,7 @@
   .newsitem .badge { flex-shrink: 0; font-size: 10.5px; font-weight: 700; border-radius: 6px; padding: 2px 7px; }
   .badge.kr { background: rgba(255,77,109,.16); color: var(--accent); }
   .badge.gl { background: rgba(77,159,255,.16); color: var(--accent2); }
+  .badge.cat { background: rgba(255,255,255,.08); color: var(--text-secondary); }
   .newsitem .ntitle { font-size: 13.5px; line-height: 1.4; flex: 1; }
   .newsitem .nsrc { flex-shrink: 0; color: var(--muted); font-size: 12px; }
 
@@ -329,6 +350,11 @@
 
 <div class="toolbar" id="toolbar">
   <div class="chips" id="chips"></div>
+  <div class="countries" id="countries" role="group" aria-label="국가 선택">
+    <button class="country active" data-country="KR" type="button" aria-pressed="true">한국</button>
+    <button class="country" data-country="US" type="button" aria-pressed="false">미국</button>
+    <button class="country" data-country="JP" type="button" aria-pressed="false">일본</button>
+  </div>
   <div class="periods" id="periods">
     <button class="period" data-period="day">오늘</button>
     <button class="period active" data-period="week">이번 주</button>
@@ -351,6 +377,11 @@
     <div class="grid" id="grid"></div>
   </div>
 
+  <div id="trendsView" style="display:none">
+    <div class="status" id="trendsStatus"></div>
+    <div class="trendlist" id="trendsList"></div>
+  </div>
+
   <div id="aiView" style="display:none">
     <div class="ai-section">
       <h2><svg class="icon icon-md" style="color:var(--accent)"><use href="#i-rocket"/></svg> 새로 나온 영상 생성 모델 <small>Hugging Face · 최신 등록순</small></h2>
@@ -361,7 +392,8 @@
       <div class="modelrow" id="aiTrending"></div>
     </div>
     <div class="ai-section">
-      <h2><svg class="icon icon-md" style="color:var(--text-secondary)"><use href="#i-newspaper"/></svg> AI 영상 뉴스 <small>구글 뉴스 · 최신순</small></h2>
+      <h2><svg class="icon icon-md" style="color:var(--text-secondary)"><use href="#i-newspaper"/></svg> AI 뉴스 <small>국내외 17개 소스 · 최신순</small></h2>
+      <div class="chips" id="aiNewsChips"></div>
       <div class="newslist" id="aiNews"></div>
     </div>
     <p class="note"><svg class="icon icon-sm" style="color:var(--warning)"><use href="#i-info"/></svg> 인기 AI 영상은 <b>유튜브 탭 → 'AI' 카테고리</b>에서 조회수·좋아요순으로 볼 수 있어요.</p>
@@ -438,6 +470,7 @@
 <script>
 const VIEWS = [
   { id: 'home', label: '홈', svgIcon: 'i-home', color: '--accent', elementId: 'homeView', load: loadHome, toolbar: 'none', hasForce: true },
+  { id: 'trends', label: '급상승', svgIcon: 'i-trending', color: '--c-trends', elementId: 'trendsView', load: (f) => loadTrends(f), toolbar: 'countries', hasForce: true },
   { id: 'youtube', label: '영상', svgIcon: 'i-youtube', color: '--c-youtube', elementId: 'videoView', load: (f) => loadVideos(f), toolbar: 'categories', hasForce: true },
   { id: 'shorts', label: '쇼츠', svgIcon: 'i-shorts', color: '--c-shorts', elementId: 'videoView', load: (f) => loadVideos(f), toolbar: 'categories', hasForce: true },
   { id: 'ai', label: 'AI', svgIcon: 'i-cpu', color: '--c-ai', elementId: 'aiView', load: (f) => loadAI(f), toolbar: 'none', hasForce: true },
@@ -449,10 +482,11 @@ const VIEWS = [
 ];
 const FILLED_PLATFORM_ICONS = new Set(['i-youtube', 'i-shorts', 'i-instagram', 'i-x-logo', 'i-threads', 'i-tiktok']);
 
-const state = { tab: 'home', category: '전체', period: 'week', categories: ['전체'], search: '' };
+const state = { tab: 'home', category: '전체', period: 'week', categories: ['전체'], search: '', country: 'KR' };
+const COUNTRIES = ['KR', 'US', 'JP'];
 const loadedViews = new Set();
 const viewElementIds = [...new Set(VIEWS.map(v => v.elementId))];
-const DEFAULT_HASH_STATE = { tab: 'home', category: '전체', period: 'week', search: '' };
+const DEFAULT_HASH_STATE = { tab: 'home', category: '전체', period: 'week', search: '', country: 'KR' };
 const SEEN_STORAGE_KEY = 'trend-viewer:seen:v1';
 const SEEN_LIMIT = 800;
 let accountManagers = {};
@@ -681,11 +715,13 @@ function renderTabs() {
 function updateToolbar(view) {
   const toolbar = document.getElementById('toolbar');
   const showCategories = view.toolbar === 'categories';
+  const showCountries = showCategories || view.toolbar === 'countries';
   toolbar.dataset.toolbar = view.toolbar;
-  toolbar.style.display = showCategories ? 'flex' : 'none';
+  toolbar.style.display = showCountries ? 'flex' : 'none';
   document.getElementById('chips').style.display = showCategories ? 'flex' : 'none';
   document.getElementById('periods').style.display = showCategories ? 'flex' : 'none';
   document.getElementById('vidSortMenu').style.display = showCategories ? 'block' : 'none';
+  document.getElementById('countries').style.display = showCountries ? 'inline-flex' : 'none';
 }
 
 function switchTab(viewId) {
@@ -747,6 +783,7 @@ function updateHashState() {
   if (state.category !== DEFAULT_HASH_STATE.category) params.set('cat', state.category);
   if (state.period !== DEFAULT_HASH_STATE.period) params.set('period', state.period);
   if (state.search) params.set('q', state.search);
+  if (state.country !== DEFAULT_HASH_STATE.country) params.set('country', state.country);
   const query = params.toString();
   const nextUrl = location.pathname + location.search + (query ? '#' + query : '');
   history.replaceState(null, '', nextUrl);
@@ -760,6 +797,13 @@ function restoreHashState() {
   state.search = params.get('q') || DEFAULT_HASH_STATE.search;
   document.getElementById('searchInput').value = state.search;
   document.querySelectorAll('.period').forEach(p => p.classList.toggle('active', p.dataset.period === state.period));
+  const country = (params.get('country') || DEFAULT_HASH_STATE.country).toUpperCase();
+  state.country = COUNTRIES.includes(country) ? country : DEFAULT_HASH_STATE.country;
+  document.querySelectorAll('.country').forEach(c => {
+    const active = c.dataset.country === state.country;
+    c.classList.toggle('active', active);
+    c.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
   const tab = params.get('tab') || DEFAULT_HASH_STATE.tab;
   return VIEWS.some(v => v.id === tab) ? tab : DEFAULT_HASH_STATE.tab;
 }
@@ -1052,7 +1096,7 @@ async function loadVideos(force = false) {
   const q = new URLSearchParams({
     category: state.category, period: state.period,
     shorts: state.tab === 'shorts' ? '1' : '0', force: force ? '1' : '0',
-    enrich: wantLikes ? '1' : '0', q: state.search
+    enrich: wantLikes ? '1' : '0', q: state.search, country: state.country
   });
   try {
     const res = await fetch('/api/videos?' + q);
@@ -1162,6 +1206,86 @@ document.addEventListener('keydown', e => {
 
 /* ---------- AI 영상 탭 ---------- */
 let aiLoaded = false;
+/* ---------- 급상승 탭 ---------- */
+let trendsData = [];
+let trendsSeq = 0;
+function safeUrl(u) {
+  return /^https?:\/\//i.test(u || '') ? u : '';
+}
+async function loadTrends(force = false) {
+  if (state.tab !== 'trends') return;
+  const seq = ++trendsSeq;
+  const status = document.getElementById('trendsStatus');
+  const list = document.getElementById('trendsList');
+  resetStatus(status);
+  status.style.display = 'none';
+  showSkeleton(list, 6);
+  try {
+    const q = new URLSearchParams({ country: state.country, force: force ? '1' : '0' });
+    const data = await (await fetch('/api/trends?' + q)).json();
+    if (seq !== trendsSeq) return;
+    document.getElementById('updated').textContent =
+      '업데이트: ' + new Date(data.fetchedAt * 1000).toLocaleTimeString('ko-KR');
+    renderCacheAge(status, data);
+    trendsData = data.trends || [];
+    list.className = 'trendlist';
+    if (!trendsData.length) {
+      list.innerHTML = '';
+      showEmpty(status, '급상승 데이터가 없습니다', '잠시 후 새로고침으로 다시 확인해 주세요.');
+      return;
+    }
+    renderTrends();
+  } catch (e) {
+    if (seq !== trendsSeq) return;
+    list.className = 'trendlist';
+    list.innerHTML = '';
+    showError(status, '급상승');
+  }
+}
+function renderTrends() {
+  const list = document.getElementById('trendsList');
+  list.innerHTML = '';
+  trendsData.forEach((t, i) => {
+    const card = document.createElement('article');
+    card.className = 'trendcard';
+    card.innerHTML = `<div class="trank">${i + 1}</div>
+      <div class="tbody">
+        <div class="tkeyword"><a class="tkw" target="_blank" rel="noopener"></a><span class="ttraffic"></span><span class="ttime"></span></div>
+        <div class="tnews"></div>
+      </div>`;
+    const kw = card.querySelector('.tkw');
+    kw.textContent = t.keyword;
+    kw.href = 'https://www.google.com/search?q=' + encodeURIComponent(t.keyword);
+    card.querySelector('.ttraffic').textContent = '검색 ' + (t.traffic || '-');
+    card.querySelector('.ttime').textContent = timeAgo(t.ts);
+    const newsBox = card.querySelector('.tnews');
+    (t.news || []).forEach(n => {
+      const href = safeUrl(n.url);
+      if (!href) return;
+      const a = document.createElement('a');
+      a.href = href; a.target = '_blank'; a.rel = 'noopener';
+      a.textContent = n.title;
+      if (n.source) {
+        const src = document.createElement('span');
+        src.className = 'tsrc';
+        src.textContent = ' · ' + n.source;
+        a.appendChild(src);
+      }
+      newsBox.appendChild(a);
+    });
+    if (t.picture) {
+      const img = document.createElement('img');
+      img.className = 'tpic';
+      img.loading = 'lazy';
+      img.alt = '';
+      img.src = '/api/img?u=' + encodeURIComponent(t.picture);
+      img.onerror = () => img.remove();
+      card.appendChild(img);
+    }
+    list.appendChild(card);
+  });
+}
+
 async function loadAI(force = false) {
   const status = document.getElementById('aiStatus');
   if (force || !aiLoaded) {
@@ -1177,19 +1301,55 @@ async function loadAI(force = false) {
     renderCacheAge(status, data);
     renderModels('aiLatest', data.models.latest);
     renderModels('aiTrending', data.models.trending);
-    const nl = document.getElementById('aiNews');
-    nl.innerHTML = '';
-    data.news.slice(0, 20).forEach(n => {
-      const a = document.createElement('a');
-      a.className = 'newsitem'; a.href = n.link; a.target = '_blank'; a.rel = 'noopener';
-      a.innerHTML = `<span class="badge ${n.region === '국내' ? 'kr' : 'gl'}">${n.region}</span>
-        <span class="ntitle"></span><span class="nsrc"></span>`;
-      a.querySelector('.ntitle').textContent = n.title;
-      a.querySelector('.nsrc').textContent = (n.source ? n.source + ' · ' : '') + timeAgo(n.ts);
-      nl.appendChild(a);
-    });
+    aiNewsData = data.news || [];
+    renderAINewsChips();
+    renderAINews();
   } catch (e) {
     showError(status, 'AI 영상');
+  }
+}
+let aiNewsData = [];
+const aiNewsState = { category: '전체' };
+const AI_NEWS_CATEGORIES = ['전체', '모델·제품', '연구', '산업·투자', '정책·규제', '기타'];
+function renderAINewsChips() {
+  const box = document.getElementById('aiNewsChips');
+  box.innerHTML = '';
+  AI_NEWS_CATEGORIES.forEach(c => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip' + (c === aiNewsState.category ? ' active' : '');
+    b.textContent = c;
+    b.onclick = () => { aiNewsState.category = c; renderAINewsChips(); renderAINews(); };
+    box.appendChild(b);
+  });
+}
+function renderAINews() {
+  const nl = document.getElementById('aiNews');
+  nl.innerHTML = '';
+  const cat = aiNewsState.category;
+  const items = aiNewsData.filter(n => {
+    if (cat === '전체') return true;
+    if (cat === '기타') return !n.category || n.category === 'mixed';
+    return n.category === cat;
+  });
+  items.slice(0, 30).forEach(n => {
+    const a = document.createElement('a');
+    a.className = 'newsitem'; a.href = safeUrl(n.link) || '#'; a.target = '_blank'; a.rel = 'noopener';
+    const isKr = n.region === 'KR' || n.region === '국내';
+    a.innerHTML = `<span class="badge ${isKr ? 'kr' : 'gl'}">${isKr ? '국내' : '해외'}</span>
+      <span class="ntitle"></span><span class="badge cat"></span><span class="nsrc"></span>`;
+    a.querySelector('.ntitle').textContent = n.title;
+    const catBadge = a.querySelector('.badge.cat');
+    if (n.category && n.category !== 'mixed') catBadge.textContent = n.category;
+    else catBadge.remove();
+    a.querySelector('.nsrc').textContent = (n.source ? n.source + ' · ' : '') + timeAgo(n.ts);
+    nl.appendChild(a);
+  });
+  if (!items.length) {
+    const p = document.createElement('p');
+    p.className = 'note';
+    p.textContent = '이 카테고리의 뉴스가 아직 없습니다.';
+    nl.appendChild(p);
   }
 }
 function renderModels(elId, models) {
@@ -1632,8 +1792,9 @@ function renderSaved() {
 
 /* ---------- 홈 브리핑 ---------- */
 const HOME_SECTIONS = [
-  { key: 'youtube', tab: 'youtube', label: '영상', svgIcon: 'i-youtube', color: '--c-youtube', url: force => `/api/videos?period=week${force ? '&force=1' : ''}`, sourceName: '유튜브' },
-  { key: 'shorts', tab: 'shorts', label: '쇼츠', svgIcon: 'i-shorts', color: '--c-shorts', url: force => `/api/videos?shorts=1&period=week${force ? '&force=1' : ''}`, sourceName: '쇼츠' },
+  { key: 'trends', tab: 'trends', label: '급상승', svgIcon: 'i-trending', color: '--c-trends', url: force => `/api/trends?country=${state.country}${force ? '&force=1' : ''}`, sourceName: '급상승' },
+  { key: 'youtube', tab: 'youtube', label: '영상', svgIcon: 'i-youtube', color: '--c-youtube', url: force => `/api/videos?period=week&country=${state.country}${force ? '&force=1' : ''}`, sourceName: '유튜브' },
+  { key: 'shorts', tab: 'shorts', label: '쇼츠', svgIcon: 'i-shorts', color: '--c-shorts', url: force => `/api/videos?shorts=1&period=week&country=${state.country}${force ? '&force=1' : ''}`, sourceName: '쇼츠' },
   { key: 'ai', tab: 'ai', label: 'AI', svgIcon: 'i-cpu', color: '--c-ai', url: force => `/api/ai${force ? '?force=1' : ''}`, sourceName: 'AI 영상' },
   { key: 'reels', tab: 'reels', label: '릴스', svgIcon: 'i-instagram', color: '--c-reels', url: force => `/api/reels${force ? '?force=1' : ''}`, sourceName: '릴스' },
   { key: 'x', tab: 'x', label: 'X', svgIcon: 'i-x-logo', color: '--c-x', url: force => `/api/x${force ? '?force=1' : ''}`, sourceName: 'X' },
@@ -1677,6 +1838,16 @@ function aiHomeItems(data) {
 }
 
 function homeItems(section, data) {
+  if (section.key === 'trends') {
+    return (data.trends || []).slice(0, 5).map(t => ({
+      title: t.keyword,
+      thumbnail: t.picture ? `/api/img?u=${encodeURIComponent(t.picture)}` : '',
+      meta: [`검색 ${t.traffic || '-'}`, (t.news && t.news[0] && t.news[0].source) || '', timeAgo(t.ts)].filter(Boolean),
+      hot: `검색 ${t.traffic || '-'}`,
+      url: safeUrl(t.news && t.news[0] && t.news[0].url) || ('https://www.google.com/search?q=' + encodeURIComponent(t.keyword)),
+      seenId: 'trend:' + t.keyword,
+    }));
+  }
   if (section.key === 'youtube' || section.key === 'shorts') {
     return (data.videos || []).slice(0, 5).map(v => ({
       title: v.title,
@@ -2017,6 +2188,24 @@ document.getElementById('periods').onclick = e => {
   loadedViews.add(state.tab);
   updateHashState();
   loadVideos();
+};
+
+document.getElementById('countries').onclick = e => {
+  const btn = e.target.closest('.country');
+  if (!btn || btn.dataset.country === state.country) return;
+  state.country = btn.dataset.country;
+  document.querySelectorAll('.country').forEach(c => {
+    c.classList.toggle('active', c === btn);
+    c.setAttribute('aria-pressed', c === btn ? 'true' : 'false');
+  });
+  invalidateVideoViews();
+  loadedViews.delete('trends');
+  loadedViews.delete('home');
+  loadedViews.add(state.tab);
+  updateHashState();
+  if (state.tab === 'trends') loadTrends();
+  else if (state.tab === 'home') loadHome();
+  else loadVideos();
 };
 /* ---------- 검색 ---------- */
 document.getElementById('searchForm').addEventListener('submit', e => {
