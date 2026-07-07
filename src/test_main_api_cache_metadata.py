@@ -33,34 +33,51 @@ class MainApiCacheMetadataTest(unittest.TestCase):
         self.assert_cache_metadata(body)
 
     def test_reels_payload_includes_cache_metadata(self):
-        with mock.patch.object(main.reels_tool, "get_reels", return_value=([{"id": "r"}], ["openai"], 123.5)):
+        with mock.patch.object(main.reels_tool, "get_reels", return_value=([{"id": "r"}], ["openai"], 123.5, [], 3600)):
             self.handler._handle_reels({})
 
         code, body = self.sent[-1]
         self.assertEqual(code, 200)
         self.assertEqual(body["reels"], [{"id": "r"}])
         self.assertEqual(body["accounts"], ["openai"])
+        self.assertEqual(body["status"], "ok")
+        self.assertEqual(body["errors"], [])
         self.assert_cache_metadata(body)
 
     def test_x_payload_includes_cache_metadata(self):
-        with mock.patch.object(main.x_twitter_tool, "get_x_posts", return_value=([{"id": "x"}], ["OpenAI"], 123.5)):
+        with mock.patch.object(main.x_twitter_tool, "get_x_posts", return_value=([{"id": "x"}], ["OpenAI"], 123.5, [{"account": "runwayml", "kind": "http", "code": 429}], 3600)):
             self.handler._handle_x({})
 
         code, body = self.sent[-1]
         self.assertEqual(code, 200)
         self.assertEqual(body["posts"], [{"id": "x"}])
         self.assertEqual(body["accounts"], ["OpenAI"])
+        self.assertEqual(body["status"], "partial")
+        self.assertEqual(body["errors"], [{"account": "runwayml", "kind": "http", "code": 429}])
         self.assert_cache_metadata(body)
 
     def test_threads_payload_includes_cache_metadata(self):
-        with mock.patch.object(main.threads_tool, "get_threads_posts", return_value=([{"id": "th"}], ["openai"], 123.5)):
+        with mock.patch.object(main.threads_tool, "get_threads_posts", return_value=([], ["openai"], 123.5, [], 3600)):
             self.handler._handle_threads({})
 
         code, body = self.sent[-1]
         self.assertEqual(code, 200)
-        self.assertEqual(body["posts"], [{"id": "th"}])
+        self.assertEqual(body["posts"], [])
         self.assertEqual(body["accounts"], ["openai"])
+        self.assertEqual(body["status"], "empty")
+        self.assertEqual(body["errors"], [])
         self.assert_cache_metadata(body)
+
+    def test_reels_error_payload_reports_negative_cache_ttl(self):
+        errors = [{"account": "openai", "kind": "http", "code": 401}]
+        with mock.patch.object(main.reels_tool, "get_reels", return_value=([], ["openai"], 123.5, errors, 120)):
+            self.handler._handle_reels({})
+
+        code, body = self.sent[-1]
+        self.assertEqual(code, 200)
+        self.assertEqual(body["status"], "error")
+        self.assertEqual(body["errors"], errors)
+        self.assertEqual(body["cacheTtl"], 120)
 
     def test_tiktok_payload_includes_cache_metadata(self):
         with mock.patch.object(main.tiktok_tool, "get_tiktok", return_value=([{"id": "tt"}], ["openai"], 123.5)):

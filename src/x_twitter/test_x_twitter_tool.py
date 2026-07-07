@@ -79,7 +79,7 @@ class XTwitterToolTest(unittest.TestCase):
         with mock.patch(
             "x_twitter.x_twitter_tool.http_tool.http_get", side_effect=fake_http_get
         ):
-            posts = x_twitter_tool.fetch_x_posts("Open AI")
+            posts, error = x_twitter_tool.fetch_x_posts("Open AI")
 
         self.assertEqual(
             captured["url"],
@@ -87,6 +87,7 @@ class XTwitterToolTest(unittest.TestCase):
         )
         self.assertEqual(captured["headers"], {"Accept": "text/html"})
         self.assertEqual(captured["timeout"], 12)
+        self.assertIsNone(error)
         self.assertEqual(len(posts), 1)
         self.assertEqual(posts[0]["account"], "Open AI")
         self.assertEqual(posts[0]["name"], "OpenAI")
@@ -112,15 +113,20 @@ class XTwitterToolTest(unittest.TestCase):
             "x_twitter.x_twitter_tool.http_tool.http_get",
             return_value=("text/html", html.encode()),
         ):
+            posts, error = x_twitter_tool.fetch_x_posts("OpenAI")
             self.assertEqual(
-                x_twitter_tool.fetch_x_posts("OpenAI")[0]["url"],
+                posts[0]["url"],
                 "https://x.com/OpenAI/status/fallback",
             )
+            self.assertIsNone(error)
 
         with mock.patch(
             "x_twitter.x_twitter_tool.http_tool.http_get", side_effect=TimeoutError
         ):
-            self.assertEqual(x_twitter_tool.fetch_x_posts("OpenAI"), [])
+            posts, error = x_twitter_tool.fetch_x_posts("OpenAI")
+
+        self.assertEqual(posts, [])
+        self.assertEqual(error, {"account": "OpenAI", "kind": "timeout", "code": None})
 
     def test_get_x_posts_cache_key_includes_accounts_tuple(self):
         path = accounts_tool.get_source("x")["path"]
@@ -131,21 +137,42 @@ class XTwitterToolTest(unittest.TestCase):
 
         def fake_fetch(account):
             calls.append(account)
-            return [{"account": account}]
+            return [{"account": account}], None
 
         with mock.patch(
             "x_twitter.x_twitter_tool.fetch_x_posts", side_effect=fake_fetch
         ):
-            posts, accounts, fetched_at = x_twitter_tool.get_x_posts(False)
-            posts2, accounts2, fetched_at2 = x_twitter_tool.get_x_posts(False)
+            posts, accounts, fetched_at, errors, cache_ttl = x_twitter_tool.get_x_posts(False)
+            posts2, accounts2, fetched_at2, errors2, cache_ttl2 = x_twitter_tool.get_x_posts(False)
 
         self.assertEqual(accounts, ["OpenAI", "GoogleDeepMind"])
         self.assertEqual(accounts2, accounts)
         self.assertEqual(posts, [{"account": "OpenAI"}, {"account": "GoogleDeepMind"}])
         self.assertEqual(posts2, posts)
+        self.assertEqual(errors, [])
+        self.assertEqual(errors2, [])
+        self.assertEqual(cache_ttl, 3600)
+        self.assertEqual(cache_ttl2, 3600)
         self.assertEqual(fetched_at2, fetched_at)
         self.assertEqual(calls, ["OpenAI", "GoogleDeepMind"])
         self.assertIn(("x", ("OpenAI", "GoogleDeepMind")), cache_tool._cache)
+
+    def test_get_x_posts_negative_error_uses_short_cache_ttl(self):
+        path = accounts_tool.get_source("x")["path"]
+        with open(path, "w") as f:
+            json.dump(["OpenAI"], f)
+
+        def fake_fetch(account):
+            return [], {"account": account, "kind": "http", "code": 429}
+
+        with mock.patch("x_twitter.x_twitter_tool.fetch_x_posts", side_effect=fake_fetch):
+            posts, accounts, fetched_at, errors, cache_ttl = x_twitter_tool.get_x_posts(False)
+
+        self.assertEqual(posts, [])
+        self.assertEqual(accounts, ["OpenAI"])
+        self.assertGreater(fetched_at, 0)
+        self.assertEqual(errors, [{"account": "OpenAI", "kind": "http", "code": 429}])
+        self.assertEqual(cache_ttl, 120)
 
 
 if __name__ == "__main__":

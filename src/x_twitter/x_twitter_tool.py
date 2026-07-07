@@ -8,6 +8,8 @@ from urllib.parse import quote
 
 from shared import accounts_tool, cache_tool, http_tool
 
+NEGATIVE_CACHE_TTL = 120
+
 
 DEFAULT_X_ACCOUNTS = [
     "OpenAI",
@@ -57,16 +59,19 @@ def fetch_x_posts(username: str):
         html = body.decode("utf-8", "ignore")
         match = re.search(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', html, re.S)
         if not match:
-            return []
+            return [], {"account": username, "kind": "parse", "code": None}
         data = json.loads(match.group(1))
-    except (
-        urllib.error.URLError,
-        TimeoutError,
-        json.JSONDecodeError,
-        UnicodeDecodeError,
-        OSError,
-    ):
-        return []
+    except urllib.error.HTTPError as exc:
+        return [], {"account": username, "kind": "http", "code": exc.code}
+    except TimeoutError:
+        return [], {"account": username, "kind": "timeout", "code": None}
+    except urllib.error.URLError as exc:
+        kind = "timeout" if isinstance(exc.reason, TimeoutError) else "http"
+        return [], {"account": username, "kind": kind, "code": None}
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return [], {"account": username, "kind": "parse", "code": None}
+    except OSError:
+        return [], {"account": username, "kind": "http", "code": None}
 
     posts = []
     for entry in _find_timeline_entries(data) or []:
@@ -101,17 +106,28 @@ def fetch_x_posts(username: str):
                 "createdAt": tweet.get("created_at", ""),
             }
         )
-    return posts
+    return posts, None
 
 
 def get_x_posts(force: bool):
     source = accounts_tool.get_source("x")
     accounts = accounts_tool.load_accounts(source["path"], source["defaults"])
+    cache_key = ("x", tuple(accounts))
 
     def fetch():
         with ThreadPoolExecutor(max_workers=3) as pool:
             results = pool.map(fetch_x_posts, accounts)
-        return [post for chunk in results for post in chunk]
+        posts = []
+        errors = []
+        for items, error in results:
+            posts.extend(items)
+            if error:
+                errors.append(error)
+        return posts, errors
 
-    posts, fetched_at = cache_tool.cached(("x", tuple(accounts)), force, fetch)
-    return posts, accounts, fetched_at
+    def ttl_for_outcome(outcome):
+        posts, errors = outcome
+        return NEGATIVE_CACHE_TTL if not posts and errors else None
+
+    (posts, errors), fetched_at = cache_tool.cached(cache_key, force, fetch, ttl=ttl_for_outcome)
+    return posts, accounts, fetched_at, errors, cache_tool.ttl_for(cache_key)

@@ -25,6 +25,16 @@ tiktok_tool.register()
 x_twitter_tool.register()
 
 
+def _feed_status(items, errors):
+    if items and errors:
+        return "partial"
+    if items:
+        return "ok"
+    if errors:
+        return "error"
+    return "empty"
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         print("[%s] %s" % (time.strftime("%H:%M:%S"), fmt % args))
@@ -69,8 +79,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def _handle_reels(self, qs):
         force = qs.get("force", ["0"])[0] == "1"
-        reels, accounts, fetched_at = reels_tool.get_reels(force)
-        self._send(200, {"reels": reels[:80], "accounts": accounts, "fetchedAt": fetched_at, "cacheTtl": CACHE_TTL})
+        reels, accounts, fetched_at, errors, cache_ttl = reels_tool.get_reels(force)
+        self._send(200, {"reels": reels[:80], "accounts": accounts, "fetchedAt": fetched_at, "cacheTtl": cache_ttl, "status": _feed_status(reels, errors), "errors": errors})
 
     def _handle_tiktok(self, qs):
         force = qs.get("force", ["0"])[0] == "1"
@@ -79,13 +89,13 @@ class Handler(BaseHTTPRequestHandler):
 
     def _handle_x(self, qs):
         force = qs.get("force", ["0"])[0] == "1"
-        posts, accounts, fetched_at = x_twitter_tool.get_x_posts(force)
-        self._send(200, {"posts": posts, "accounts": accounts, "fetchedAt": fetched_at, "cacheTtl": CACHE_TTL})
+        posts, accounts, fetched_at, errors, cache_ttl = x_twitter_tool.get_x_posts(force)
+        self._send(200, {"posts": posts, "accounts": accounts, "fetchedAt": fetched_at, "cacheTtl": cache_ttl, "status": _feed_status(posts, errors), "errors": errors})
 
     def _handle_threads(self, qs):
         force = qs.get("force", ["0"])[0] == "1"
-        posts, accounts, fetched_at = threads_tool.get_threads_posts(force)
-        self._send(200, {"posts": posts, "accounts": accounts, "fetchedAt": fetched_at, "cacheTtl": CACHE_TTL})
+        posts, accounts, fetched_at, errors, cache_ttl = threads_tool.get_threads_posts(force)
+        self._send(200, {"posts": posts, "accounts": accounts, "fetchedAt": fetched_at, "cacheTtl": cache_ttl, "status": _feed_status(posts, errors), "errors": errors})
 
     def _handle_ai(self, qs):
         force = qs.get("force", ["0"])[0] == "1"

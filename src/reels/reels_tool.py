@@ -8,6 +8,7 @@ from urllib.parse import quote
 from shared import accounts_tool, cache_tool, http_tool
 
 
+NEGATIVE_CACHE_TTL = 120
 IG_APP_ID = "936619743392459"
 DEFAULT_IG_ACCOUNTS = [
     "openai",
@@ -33,8 +34,17 @@ def fetch_ig_reels(username: str):
     )
     try:
         data = http_tool.http_json(url, headers={"x-ig-app-id": IG_APP_ID}, timeout=12)
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError):
-        return []
+    except urllib.error.HTTPError as exc:
+        return [], {"account": username, "kind": "http", "code": exc.code}
+    except TimeoutError:
+        return [], {"account": username, "kind": "timeout", "code": None}
+    except urllib.error.URLError as exc:
+        kind = "timeout" if isinstance(exc.reason, TimeoutError) else "http"
+        return [], {"account": username, "kind": kind, "code": None}
+    except json.JSONDecodeError:
+        return [], {"account": username, "kind": "parse", "code": None}
+    except OSError:
+        return [], {"account": username, "kind": "http", "code": None}
     user = (data.get("data") or {}).get("user") or {}
     reels = []
     for edge in (user.get("edge_owner_to_timeline_media") or {}).get("edges", []):
@@ -55,19 +65,29 @@ def fetch_ig_reels(username: str):
                 "takenAt": n.get("taken_at_timestamp") or 0,
             }
         )
-    return reels
+    return reels, None
 
 
 def get_reels(force: bool):
     source = accounts_tool.get_source("reels")
     accounts = accounts_tool.load_accounts(source["path"], source["defaults"])
+    cache_key = ("reels", tuple(accounts))
 
     def fetch():
         with ThreadPoolExecutor(max_workers=6) as pool:
             results = pool.map(fetch_ig_reels, accounts)
-        merged = [r for chunk in results for r in chunk]
+        merged = []
+        errors = []
+        for items, error in results:
+            merged.extend(items)
+            if error:
+                errors.append(error)
         merged.sort(key=lambda r: r["views"], reverse=True)
-        return merged
+        return merged, errors
 
-    reels, fetched_at = cache_tool.cached(("reels", tuple(accounts)), force, fetch)
-    return reels, accounts, fetched_at
+    def ttl_for_outcome(outcome):
+        reels, errors = outcome
+        return NEGATIVE_CACHE_TTL if not reels and errors else None
+
+    (reels, errors), fetched_at = cache_tool.cached(cache_key, force, fetch, ttl=ttl_for_outcome)
+    return reels, accounts, fetched_at, errors, cache_tool.ttl_for(cache_key)

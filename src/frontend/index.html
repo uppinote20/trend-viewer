@@ -94,7 +94,7 @@
   .views, .rank, .len, .sortcount, .pstats, .modelcard .msub, #today, #updated, .cache-age-line { font-variant-numeric: tabular-nums; }
   .views { color: var(--accent); font-weight: 700; }
   .status { padding: 60px 0; text-align: center; color: var(--muted); font-size: 15px; }
-  .status.cache-age { display: block; min-height: 22px; padding: 0 0 12px; text-align: left; font-size: 12px; }
+  .status.cache-age { display: flex; flex-direction: column; gap: 2px; min-height: 22px; padding: 0 0 12px; text-align: left; font-size: 12px; }
   .cache-age-line { color: var(--muted); font-size: 12px; line-height: 1.45; }
   .skeleton-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
   .skeleton-grid.shorts { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
@@ -483,6 +483,52 @@ function showError(target, sourceName) {
   target.querySelector('span').textContent = '네트워크 상태를 확인한 뒤 새로고침해 주세요.';
 }
 
+function errorKindLabel(kind, code) {
+  if (kind === 'timeout') return '시간 초과';
+  if (kind === 'parse') return '응답 해석 실패';
+  if (kind === 'http') {
+    if (code === 429) return '429 요청 제한';
+    if (code) return `HTTP ${code}`;
+    return 'HTTP 오류';
+  }
+  return '수집 오류';
+}
+
+function feedFailureCount(errors) {
+  const accounts = new Set((errors || []).map(error => error.account).filter(Boolean));
+  return accounts.size || (errors || []).length;
+}
+
+function feedErrorSummary(data) {
+  const errors = Array.isArray(data?.errors) ? data.errors : [];
+  if (!errors.length) return '수집 오류 · 계정 수집 실패';
+  const groups = new Map();
+  errors.forEach(error => {
+    const key = `${error.kind || 'unknown'}:${error.code || ''}`;
+    const current = groups.get(key) || { kind: error.kind, code: error.code, count: 0, accounts: new Set() };
+    current.count += 1;
+    if (error.account) current.accounts.add(error.account);
+    groups.set(key, current);
+  });
+  return Array.from(groups.values()).map(group => {
+    const count = group.accounts.size || group.count;
+    return `${errorKindLabel(group.kind, group.code)} · ${count}개 계정 실패`;
+  }).join(' / ');
+}
+
+function isFeedErrorStatus(data) {
+  return data?.status === 'error' || data?.status === 'blocked';
+}
+
+function showFeedContractError(target, data) {
+  target.style.display = 'block';
+  target.className = 'error-inline';
+  target.setAttribute('role', 'alert');
+  target.innerHTML = `<strong></strong><span></span>`;
+  target.querySelector('strong').textContent = '일시적으로 가져오지 못했습니다';
+  target.querySelector('span').textContent = `${feedErrorSummary(data)} · 새로고침을 누르면 다시 시도합니다.`;
+}
+
 function resetStatus(target) {
   target.className = 'status';
   target.removeAttribute('role');
@@ -521,6 +567,30 @@ function renderCacheAge(target, data) {
   target.className = 'status cache-age';
   target.style.display = 'block';
   target.textContent = text;
+}
+
+function renderFeedStatus(target, data) {
+  const cacheText = cacheAgeText(data);
+  const partialCount = data?.status === 'partial' ? feedFailureCount(data.errors) : 0;
+  if (!target) return;
+  if (!cacheText && !partialCount) {
+    target.innerHTML = '';
+    return;
+  }
+  target.className = 'status cache-age';
+  target.style.display = 'block';
+  target.innerHTML = '';
+  if (cacheText) {
+    const cache = document.createElement('span');
+    cache.textContent = cacheText;
+    target.appendChild(cache);
+  }
+  if (partialCount) {
+    const partial = document.createElement('span');
+    partial.className = 'cache-age-line';
+    partial.textContent = `${partialCount}개 계정은 이번 수집에서 실패했습니다.`;
+    target.appendChild(partial);
+  }
 }
 
 function setSortCount(target, text, data) {
@@ -1141,18 +1211,23 @@ async function loadReels(force = false) {
   resetStatus(status);
   status.style.display = 'none';
   showSkeleton(grid, 10, true);
+  document.getElementById('reelsFallback').style.display = 'none';
   try {
-    const data = await (await fetch('/api/reels' + (force ? '?force=1' : ''))).json();
+    const res = await fetch('/api/reels' + (force ? '?force=1' : ''));
+    if (!res.ok) throw new Error(`릴스 ${res.status}`);
+    const data = await res.json();
     accountManagers.reels.render(data.accounts);
     document.getElementById('updated').textContent =
       '업데이트: ' + new Date(data.fetchedAt * 1000).toLocaleTimeString('ko-KR');
-    renderCacheAge(status, data);
+    renderFeedStatus(status, data);
     reelsData = data.reels || [];
     reelsMeta = data;
     if (!reelsData.length) {
       clearSkeleton(grid, 'grid shorts');
       setSortCount(document.getElementById('reelsCount'), '', data);
-      if (data.accounts && data.accounts.length) {
+      if (isFeedErrorStatus(data)) {
+        showFeedContractError(status, data);
+      } else if (data.accounts && data.accounts.length) {
         showReelsFallback(data.accounts);
       } else {
         showEmpty(status, '구독 계정이 없습니다', '즐겨보는 인스타그램 계정을 추가하면 릴스를 모아볼 수 있습니다.');
@@ -1686,6 +1761,16 @@ function createHomeSection(section) {
   return { box, count, body };
 }
 
+function appendHomePartialNotice(body, data) {
+  if (data?.status !== 'partial') return;
+  const count = feedFailureCount(data.errors);
+  if (!count) return;
+  const line = document.createElement('p');
+  line.className = 'cache-age-line';
+  line.textContent = `${count}개 계정은 이번 수집에서 실패했습니다.`;
+  body.appendChild(line);
+}
+
 async function loadHome(force = false) {
   const status = document.getElementById('homeStatus');
   const sectionsEl = document.getElementById('homeSections');
@@ -1710,6 +1795,10 @@ async function loadHome(force = false) {
         grid.className = 'home-rowgrid';
         items.forEach((item, itemIndex) => grid.appendChild(createHomeRow(item, itemIndex + 1, section)));
         view.body.appendChild(grid);
+        appendHomePartialNotice(view.body, data);
+      } else if (isFeedErrorStatus(data)) {
+        view.count.textContent = '오류';
+        showFeedContractError(view.body, data);
       } else {
         showEmpty(view.body, `${section.label} 브리핑이 비어 있습니다`, '잠시 후 새로고침하거나 전체 탭에서 계정과 필터를 확인해 주세요.');
       }
@@ -1743,17 +1832,20 @@ async function loadSocial(kind, force = false) {
   showSkeleton(listEl, 6);
   if (kind === 'threads') document.getElementById('thFallback').style.display = 'none';
   try {
-    const data = await (await fetch('/api/' + kind + (force ? '?force=1' : ''))).json();
+    const res = await fetch('/api/' + kind + (force ? '?force=1' : ''));
+    if (!res.ok) throw new Error(`${kind === 'x' ? 'X' : '스레드'} ${res.status}`);
+    const data = await res.json();
     accountManagers[kind].render(data.accounts);
     document.getElementById('updated').textContent =
       '업데이트: ' + new Date(data.fetchedAt * 1000).toLocaleTimeString('ko-KR');
-    renderCacheAge(statusEl, data);
+    renderFeedStatus(statusEl, data);
     social[kind].data = data.posts || [];
     socialMeta[kind] = data;
     if (!social[kind].data.length) {
       clearSkeleton(listEl, 'postlist');
-      renderCacheAge(statusEl, data);
-      if (kind === 'threads' && data.accounts && data.accounts.length) showThreadsFallback(data.accounts);
+      renderFeedStatus(statusEl, data);
+      if (isFeedErrorStatus(data)) showFeedContractError(statusEl, data);
+      else if (kind === 'threads' && data.accounts && data.accounts.length) showThreadsFallback(data.accounts);
       else if (kind === 'threads') showEmpty(statusEl, '구독 계정이 없습니다', '스레드 계정을 추가하면 바로가기와 최신 글 조회를 시도할 수 있습니다.');
       else showEmpty(statusEl, data.accounts && data.accounts.length ? '가져온 글이 없습니다' : '구독 계정이 없습니다', data.accounts && data.accounts.length ? '계정을 확인하거나 잠시 후 새로고침해 주세요.' : '팔로우하고 싶은 X 계정을 추가하면 최신 글을 모아볼 수 있습니다.');
       return;

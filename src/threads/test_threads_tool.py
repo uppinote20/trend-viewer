@@ -92,10 +92,12 @@ class ThreadsToolTest(unittest.TestCase):
                 "threads.threads_tool.http_tool.http_json", side_effect=fake_http_json
             ),
         ):
-            lsd, user_id = threads_tool._threads_lsd_and_userid("Open AI")
+            lsd, user_id, lsd_error, user_id_error = threads_tool._threads_lsd_and_userid("Open AI")
 
         self.assertEqual(lsd, "lsd-token")
         self.assertEqual(user_id, "42")
+        self.assertIsNone(lsd_error)
+        self.assertIsNone(user_id_error)
         self.assertEqual(
             captured["url"],
             "https://www.instagram.com/api/v1/users/web_profile_info/?username=Open%20AI",
@@ -122,13 +124,14 @@ class ThreadsToolTest(unittest.TestCase):
         with (
             mock.patch(
                 "threads.threads_tool._threads_lsd_and_userid",
-                return_value=("lsd-token", "42"),
+                return_value=("lsd-token", "42", None, None),
             ),
             mock.patch("threads.threads_tool.urllib.request.urlopen", fake_urlopen),
         ):
-            posts = threads_tool.fetch_threads_posts("openai")
+            posts, error = threads_tool.fetch_threads_posts("openai")
 
         self.assertEqual(seen_doc_ids, threads_tool.THREADS_DOC_IDS[:2])
+        self.assertIsNone(error)
         self.assertEqual(posts[0]["text"], "ok")
         self.assertEqual(
             seen_headers[0]["User-agent"],
@@ -141,21 +144,26 @@ class ThreadsToolTest(unittest.TestCase):
 
     def test_fetch_threads_posts_all_failures_and_missing_ids(self):
         with mock.patch(
-            "threads.threads_tool._threads_lsd_and_userid", return_value=(None, "42")
+            "threads.threads_tool._threads_lsd_and_userid",
+            return_value=(None, "42", {"account": "openai", "kind": "parse", "code": None}, None),
         ):
-            self.assertEqual(threads_tool.fetch_threads_posts("openai"), [])
+            posts, error = threads_tool.fetch_threads_posts("openai")
+            self.assertEqual(posts, [])
+            self.assertEqual(error, {"account": "openai", "kind": "parse", "code": None})
 
         with (
             mock.patch(
                 "threads.threads_tool._threads_lsd_and_userid",
-                return_value=("lsd-token", "42"),
+                return_value=("lsd-token", "42", None, None),
             ),
             mock.patch(
                 "threads.threads_tool.urllib.request.urlopen",
                 side_effect=TimeoutError,
             ),
         ):
-            self.assertEqual(threads_tool.fetch_threads_posts("openai"), [])
+            posts, error = threads_tool.fetch_threads_posts("openai")
+            self.assertEqual(posts, [])
+            self.assertEqual(error, {"account": "openai", "kind": "timeout", "code": None})
 
     def test_get_threads_posts_cache_key_includes_accounts_tuple(self):
         path = accounts_tool.get_source("threads")["path"]
@@ -166,21 +174,42 @@ class ThreadsToolTest(unittest.TestCase):
 
         def fake_fetch(account):
             calls.append(account)
-            return [{"account": account}]
+            return [{"account": account}], None
 
         with mock.patch(
             "threads.threads_tool.fetch_threads_posts", side_effect=fake_fetch
         ):
-            posts, accounts, fetched_at = threads_tool.get_threads_posts(False)
-            posts2, accounts2, fetched_at2 = threads_tool.get_threads_posts(False)
+            posts, accounts, fetched_at, errors, cache_ttl = threads_tool.get_threads_posts(False)
+            posts2, accounts2, fetched_at2, errors2, cache_ttl2 = threads_tool.get_threads_posts(False)
 
         self.assertEqual(accounts, ["b", "a"])
         self.assertEqual(accounts2, accounts)
         self.assertEqual(posts, [{"account": "b"}, {"account": "a"}])
         self.assertEqual(posts2, posts)
+        self.assertEqual(errors, [])
+        self.assertEqual(errors2, [])
+        self.assertEqual(cache_ttl, 3600)
+        self.assertEqual(cache_ttl2, 3600)
         self.assertEqual(fetched_at2, fetched_at)
         self.assertEqual(calls, ["b", "a"])
         self.assertIn(("threads", ("b", "a")), cache_tool._cache)
+
+    def test_get_threads_posts_negative_error_uses_short_cache_ttl(self):
+        path = accounts_tool.get_source("threads")["path"]
+        with open(path, "w") as f:
+            json.dump(["openai"], f)
+
+        def fake_fetch(account):
+            return [], {"account": account, "kind": "http", "code": 401}
+
+        with mock.patch("threads.threads_tool.fetch_threads_posts", side_effect=fake_fetch):
+            posts, accounts, fetched_at, errors, cache_ttl = threads_tool.get_threads_posts(False)
+
+        self.assertEqual(posts, [])
+        self.assertEqual(accounts, ["openai"])
+        self.assertGreater(fetched_at, 0)
+        self.assertEqual(errors, [{"account": "openai", "kind": "http", "code": 401}])
+        self.assertEqual(cache_ttl, 120)
 
 
 if __name__ == "__main__":

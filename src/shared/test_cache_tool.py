@@ -43,6 +43,31 @@ class CacheToolTest(unittest.TestCase):
         self.assertEqual(fetched_at, 21.0)
         self.assertEqual(calls, [1])
 
+    def test_cached_per_entry_ttl(self):
+        calls = []
+        cache_tool._cache["k"] = (10.0, "old", 120)
+        with mock.patch("shared.cache_tool.settings.CACHE_TTL", 3600), mock.patch(
+            "time.time", side_effect=[200.0, 201.0]
+        ):
+            result, fetched_at = cache_tool.cached("k", False, lambda: calls.append(1) or "new")
+
+        self.assertEqual(result, "new")
+        self.assertEqual(fetched_at, 201.0)
+        self.assertEqual(calls, [1])
+
+    def test_cached_ttl_selector_stores_effective_ttl(self):
+        with mock.patch("time.time", side_effect=[100.0, 101.0]):
+            result, fetched_at = cache_tool.cached(
+                "k",
+                False,
+                lambda: ([], [{"account": "x"}]),
+                ttl=lambda outcome: 120 if not outcome[0] and outcome[1] else None,
+            )
+
+        self.assertEqual(result, ([], [{"account": "x"}]))
+        self.assertEqual(fetched_at, 101.0)
+        self.assertEqual(cache_tool.ttl_for("k"), 120)
+
     def test_cached_force(self):
         cache_tool._cache["k"] = (10.0, "old")
         with mock.patch("time.time", side_effect=[11.0, 12.0]):
