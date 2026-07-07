@@ -12,4 +12,5 @@ UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
 IMG_CACHE_MAX = 600
 IMG_PROXY_ALLOW = (".cdninstagram.com", ".fbcdn.net", ".ytimg.com",
                    ".googleusercontent.com", ".twimg.com",
-                   ".tiktokcdn.com", ".tiktokcdn-eu.com", ".tiktokcdn-us.com")
+                   ".tiktokcdn.com", ".tiktokcdn-eu.com", ".tiktokcdn-us.com",
+                   ".gstatic.com")

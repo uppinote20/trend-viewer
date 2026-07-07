@@ -21,23 +21,102 @@ CATEGORIES = {
     "동물": "강아지 고양이",
 }
 
+COUNTRY_LOCALE = {"KR": ("ko", "KR"), "US": ("en", "US"), "JP": ("ja", "JP")}
+
+COUNTRY_CATEGORIES = {
+    "US": {
+        "먹방": ["mukbang", "food challenge"],
+        "뷰티/패션": ["makeup tutorial", "beauty vlog"],
+        "브이로그": ["daily vlog", "week in my life"],
+        "예능/코미디": ["funny videos", "comedy skits"],
+        "영화/드라마": ["movie review", "Netflix review"],
+        "테크/IT": ["tech review", "AI tools"],
+        "지식/교육": ["explained", "educational documentary"],
+        "여행": ["travel vlog", "best places to visit"],
+        "동물": ["cute animals", "funny pets"],
+    },
+    "JP": {
+        "먹방": ["モッパン", "大食い"],
+        "뷰티/패션": ["メイク 美容", "ファッション 購入品"],
+        "브이로그": ["日常 vlog", "一日密着"],
+        "예능/코미디": ["お笑い コント", "バラエティ 面白い"],
+        "영화/드라마": ["映画 レビュー", "ドラマ 考察"],
+        "테크/IT": ["ガジェット レビュー", "AI ツール"],
+        "지식/교육": ["解説 わかりやすい", "ゆっくり解説"],
+        "여행": ["旅行 vlog", "ひとり旅"],
+        "동물": ["動物 かわいい", "猫 犬 癒し"],
+    },
+}
+
 ALL_MERGE = ["먹방", "브이로그", "예능/코미디", "뷰티/패션", "영화/드라마", "여행"]
 
 PERIOD_CODE = {"day": 2, "week": 3, "month": 4}
 
-PERIOD_EXCLUDE = {
-    "day": ("일 전", "주 전", "개월 전", "년 전"),
-    "week": ("주 전", "개월 전", "년 전"),
-    "month": ("개월 전", "년 전"),
+PERIOD_EXCLUDE_BY_LOCALE = {
+    "ko": {
+        "day": ("일 전", "주 전", "개월 전", "년 전"),
+        "week": ("주 전", "개월 전", "년 전"),
+        "month": ("개월 전", "년 전"),
+    },
+    "en": {
+        "day": (
+            "day ago",
+            "days ago",
+            "week ago",
+            "weeks ago",
+            "month ago",
+            "months ago",
+            "year ago",
+            "years ago",
+        ),
+        "week": (
+            "week ago",
+            "weeks ago",
+            "month ago",
+            "months ago",
+            "year ago",
+            "years ago",
+        ),
+        "month": ("month ago", "months ago", "year ago", "years ago"),
+    },
+    "ja": {
+        "day": ("日前", "週間前", "か月前", "年前"),
+        "week": ("週間前", "か月前", "年前"),
+        "month": ("か月前", "年前"),
+    },
 }
 
 AI_YT_QUERIES = ["AI 영상 제작", "AI 영상 생성", "sora ai video", "runway kling veo"]
 
 
-def within_period(published: str, period: str) -> bool:
+def _country_key(country: str) -> str:
+    country = (country or "KR").upper()
+    return country if country in COUNTRY_LOCALE else "KR"
+
+
+def _locale_for_country(country: str):
+    return COUNTRY_LOCALE[_country_key(country)]
+
+
+def _category_queries(category: str, country: str):
+    if category == "전체":
+        queries = []
+        for name in ALL_MERGE:
+            queries.extend(_category_queries(name, country))
+        return queries
+    if category == "AI":
+        return AI_YT_QUERIES
+    country_categories = COUNTRY_CATEGORIES.get(_country_key(country), {})
+    return list(country_categories.get(category, [CATEGORIES.get(category, category)]))
+
+
+def within_period(published: str, period: str, country: str = "KR") -> bool:
     if not published:
         return True
-    return not any(word in published for word in PERIOD_EXCLUDE.get(period, ()))
+    hl, _ = _locale_for_country(country)
+    haystack = published.casefold()
+    excludes = PERIOD_EXCLUDE_BY_LOCALE.get(hl, PERIOD_EXCLUDE_BY_LOCALE["ko"])
+    return not any(word.casefold() in haystack for word in excludes.get(period, ()))
 
 
 def build_search_params(period: str, shorts: bool = False) -> str:
@@ -76,14 +155,15 @@ def extract_videos(node, out):
             extract_videos(item, out)
 
 
-def yt_search(query: str, period: str, shorts: bool):
+def yt_search(query: str, period: str, shorts: bool, country: str = "KR"):
+    hl, gl = _locale_for_country(country)
     payload = {
         "context": {
             "client": {
                 "clientName": "WEB",
                 "clientVersion": "2.20250624.01.00",
-                "hl": "ko",
-                "gl": "KR",
+                "hl": hl,
+                "gl": gl,
             }
         },
         "query": query,
@@ -97,20 +177,21 @@ def yt_search(query: str, period: str, shorts: bool):
     extract_videos(data, videos)
     seen, unique = set(), []
     for v in videos:
-        if v["id"] and v["id"] not in seen and within_period(v["published"], period):
+        if v["id"] and v["id"] not in seen and within_period(v["published"], period, country):
             seen.add(v["id"])
             unique.append(v)
     return unique
 
 
-def yt_like_count(video_id: str):
+def yt_like_count(video_id: str, country: str = "KR"):
+    hl, gl = _locale_for_country(country)
     payload = {
         "context": {
             "client": {
                 "clientName": "WEB",
                 "clientVersion": "2.20250624.01.00",
-                "hl": "ko",
-                "gl": "KR",
+                "hl": hl,
+                "gl": gl,
             }
         },
         "videoId": video_id,
@@ -128,20 +209,20 @@ def yt_like_count(video_id: str):
         return 0
 
 
-def enrich_likes(videos, limit=45):
+def enrich_likes(videos, limit=45, country: str = "KR"):
     todo = [v for v in videos[:limit] if not v.get("likes")]
     if not todo:
         return videos
     with ThreadPoolExecutor(max_workers=12) as pool:
-        counts = pool.map(lambda v: yt_like_count(v["id"]), todo)
+        counts = pool.map(lambda v: yt_like_count(v["id"], country), todo)
     for v, c in zip(todo, counts):
         v["likes"] = c
     return videos
 
 
-def merge_yt_searches(queries, period, shorts):
+def merge_yt_searches(queries, period, shorts, country: str = "KR"):
     with ThreadPoolExecutor(max_workers=6) as pool:
-        results = pool.map(lambda q: yt_search(q, period, shorts), queries)
+        results = pool.map(lambda q: yt_search(q, period, shorts, country), queries)
     merged, seen = [], set()
     for chunk in results:
         for v in chunk:
@@ -152,19 +233,27 @@ def merge_yt_searches(queries, period, shorts):
     return merged
 
 
-def get_videos(category: str, period: str, shorts: bool, force: bool, enrich: bool = False, query: str = ""):
+def get_videos(
+    category: str,
+    period: str,
+    shorts: bool,
+    force: bool,
+    enrich: bool = False,
+    query: str = "",
+    country: str = "KR",
+):
+    country = _country_key(country)
+
     def fetch():
         if query:
             queries = [query]
-        elif category == "전체":
-            queries = [CATEGORIES[c] for c in ALL_MERGE]
-        elif category == "AI":
-            queries = AI_YT_QUERIES
         else:
-            queries = [CATEGORIES.get(category, category)]
-        vids = merge_yt_searches(queries, period, shorts)
+            queries = _category_queries(category, country)
+        vids = merge_yt_searches(queries, period, shorts, country)
         if enrich:
-            enrich_likes(vids)
+            enrich_likes(vids, country=country)
         return vids
 
-    return cache_tool.cached(("yt", query or category, period, shorts, enrich), force, fetch)
+    return cache_tool.cached(
+        ("yt", country, query or category, period, shorts, enrich), force, fetch
+    )

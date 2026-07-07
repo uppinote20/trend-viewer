@@ -14,6 +14,7 @@ from shared import accounts_tool, img_proxy_tool, saved_items_tool
 from reels import reels_tool
 from threads import threads_tool
 from tiktok import tiktok_tool
+from trends import trends_tool
 from x_twitter import x_twitter_tool
 from youtube import youtube_tool
 
@@ -71,11 +72,22 @@ class Handler(BaseHTTPRequestHandler):
         shorts = qs.get("shorts", ["0"])[0] == "1"
         enrich = qs.get("enrich", ["0"])[0] == "1"
         query = qs.get("q", [""])[0].strip()
+        country = qs.get("country", ["KR"])[0].upper()
+        if country not in youtube_tool.COUNTRY_LOCALE:
+            country = "KR"
         if not query and category not in ("전체", "AI") and category not in youtube_tool.CATEGORIES:
             self._send(400, {"error": "unknown category"})
             return
-        videos, fetched_at = youtube_tool.get_videos(category, period, shorts, force, enrich, query)
-        self._send(200, {"videos": videos[:60], "fetchedAt": fetched_at, "cacheTtl": CACHE_TTL})
+        videos, fetched_at = youtube_tool.get_videos(category, period, shorts, force, enrich, query, country)
+        self._send(200, {"videos": videos[:60], "country": country, "fetchedAt": fetched_at, "cacheTtl": CACHE_TTL})
+
+    def _handle_trends(self, qs):
+        force = qs.get("force", ["0"])[0] == "1"
+        country = qs.get("country", ["KR"])[0].upper()
+        if country not in trends_tool.GEOS:
+            country = "KR"
+        trends, fetched_at, errors, cache_ttl = trends_tool.get_trends(country, force)
+        self._send(200, {"trends": trends, "country": country, "fetchedAt": fetched_at, "cacheTtl": cache_ttl, "status": _feed_status(trends, errors), "errors": errors})
 
     def _handle_reels(self, qs):
         force = qs.get("force", ["0"])[0] == "1"
@@ -125,6 +137,7 @@ class Handler(BaseHTTPRequestHandler):
             "/index.html": self._handle_index,
             "/api/categories": self._handle_categories,
             "/api/videos": self._handle_videos,
+            "/api/trends": self._handle_trends,
             "/api/img": self._handle_img,
             "/api/saved": self._handle_saved_get,
             "/api/reels": self._handle_reels,

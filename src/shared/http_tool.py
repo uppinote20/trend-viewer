@@ -25,5 +25,28 @@ def http_json(url: str, payload=None, headers=None, timeout=15):
 
 
 def parse_view_count(text: str) -> int:
-    digits = re.sub(r"[^\d]", "", text or "")
+    text = text or ""
+    suffix_multipliers = {
+        "K": 1_000,
+        "M": 1_000_000,
+        "B": 1_000_000_000,
+        "만": 10_000,
+        "万": 10_000,
+        "억": 100_000_000,
+        "億": 100_000_000,
+    }
+    m = re.search(r"([\d,]+(?:\.\d+)?)\s*([KMB만万억億])", text, re.IGNORECASE)
+    if m:
+        raw = m.group(1)
+        if re.fullmatch(r"\d+,\d{1,2}", raw):
+            # decimal-comma abbreviation ("1,5K" -> 1.5K), not a thousands group
+            value = float(raw.replace(",", "."))
+        else:
+            value = float(raw.replace(",", ""))
+        suffix = m.group(2)
+        multiplier = suffix_multipliers.get(
+            suffix.upper(), suffix_multipliers.get(suffix)
+        )
+        return int(value * multiplier)
+    digits = re.sub(r"[^\d]", "", text)
     return int(digits) if digits else 0

@@ -32,6 +32,41 @@ class MainApiCacheMetadataTest(unittest.TestCase):
         self.assertEqual(body["videos"], [{"id": "v"}])
         self.assert_cache_metadata(body)
 
+    def test_videos_passes_country_and_falls_back_to_kr(self):
+        with mock.patch.object(main.youtube_tool, "get_videos", return_value=([], 123.5)) as gv:
+            self.handler._handle_videos({"country": ["us"]})
+            self.assertEqual(gv.call_args.args[-1], "US")
+            self.assertEqual(self.sent[-1][1]["country"], "US")
+
+            self.handler._handle_videos({"country": ["XX"]})
+            self.assertEqual(gv.call_args.args[-1], "KR")
+            self.assertEqual(self.sent[-1][1]["country"], "KR")
+
+    def test_trends_payload_includes_cache_metadata(self):
+        items = [{"keyword": "t", "trafficValue": 20000}]
+        with mock.patch.object(main.trends_tool, "get_trends", return_value=(items, 123.5, [], 3600)) as gt:
+            self.handler._handle_trends({"country": ["jp"]})
+
+        gt.assert_called_once_with("JP", False)
+        code, body = self.sent[-1]
+        self.assertEqual(code, 200)
+        self.assertEqual(body["trends"], items)
+        self.assertEqual(body["country"], "JP")
+        self.assertEqual(body["status"], "ok")
+        self.assertEqual(body["errors"], [])
+        self.assert_cache_metadata(body)
+
+    def test_trends_error_payload_reports_negative_cache_ttl(self):
+        errors = [{"country": "KR", "kind": "OSError"}]
+        with mock.patch.object(main.trends_tool, "get_trends", return_value=([], 123.5, errors, 120)):
+            self.handler._handle_trends({})
+
+        code, body = self.sent[-1]
+        self.assertEqual(code, 200)
+        self.assertEqual(body["status"], "error")
+        self.assertEqual(body["errors"], errors)
+        self.assertEqual(body["cacheTtl"], 120)
+
     def test_reels_payload_includes_cache_metadata(self):
         with mock.patch.object(main.reels_tool, "get_reels", return_value=([{"id": "r"}], ["openai"], 123.5, [], 3600)):
             self.handler._handle_reels({})

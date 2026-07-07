@@ -1,3 +1,4 @@
+from xml.sax.saxutils import escape
 import unittest
 from unittest import mock
 
@@ -7,15 +8,19 @@ from shared import cache_tool
 
 def _rss(items):
     body = ["<rss><channel>"]
-    for title, source, link, pub in items:
-        body.append(
-            "<item>"
-            f"<title>{title}</title>"
-            f"<source>{source}</source>"
-            f"<link>{link}</link>"
-            f"<pubDate>{pub}</pubDate>"
-            "</item>"
+    for item in items:
+        title, source, link, pub = item
+        parts = ["<item>", f"<title>{escape(title)}</title>"]
+        if source is not None:
+            parts.append(f"<source>{escape(source)}</source>")
+        parts.extend(
+            [
+                f"<link>{escape(link)}</link>",
+                f"<pubDate>{escape(pub)}</pubDate>",
+                "</item>",
+            ]
         )
+        body.append("".join(parts))
     body.append("</channel></rss>")
     return "".join(body).encode()
 
@@ -36,51 +41,187 @@ class AiNewsToolTest(unittest.TestCase):
     def tearDown(self):
         cache_tool._cache.clear()
 
-    def test_news_feeds_are_computed_with_quote(self):
-        self.assertIn("AI%20%EC%98%81%EC%83%81%20%EC%83%9D%EC%84%B1", ai_news_tool.NEWS_FEEDS[0][1])
-        self.assertIn("%22AI%20video%22%20model", ai_news_tool.NEWS_FEEDS[1][1])
+    def test_feed_registry_has_required_shape_and_legacy_video_queries(self):
+        required = {"name", "url", "region", "category", "needs_ai_anchor"}
+        self.assertGreaterEqual(len(ai_news_tool.FEED_REGISTRY), 16)
+        self.assertEqual({"KR", "global"}, {feed["region"] for feed in ai_news_tool.FEED_REGISTRY})
+        self.assertGreaterEqual(len({feed["name"] for feed in ai_news_tool.FEED_REGISTRY}), 3)
+
+        for feed in ai_news_tool.FEED_REGISTRY:
+            self.assertTrue(required.issubset(feed))
+            self.assertIn(feed["category"], set(ai_news_tool.CATEGORIES) | {"mixed"})
+            self.assertIsInstance(feed["needs_ai_anchor"], bool)
+
+        urls = {feed["name"]: feed["url"] for feed in ai_news_tool.FEED_REGISTRY}
+        self.assertIn("AI%20%EC%98%81%EC%83%81%20%EC%83%9D%EC%84%B1", urls["Google News KR video generation"])
+        self.assertIn("%22AI%20video%22%20model", urls["Google News Global video generation"])
         self.assertEqual(ai_news_tool.HF_PIPELINES, ["text-to-video", "image-to-video"])
 
-    def test_fetch_news_parses_limits_and_sorts_rss_items(self):
-        feeds = [("국내", "https://feed.test/kr"), ("해외", "https://feed.test/us")]
-        kr_items = [
-            (
-                f"kr-{i}",
-                "KR Source",
-                f"https://news.test/kr/{i}",
-                f"Tue, 07 Jul 2026 00:{i:02d}:00 +0000",
-            )
-            for i in range(30)
+    def test_classify_news_scores_english_and_korean_headlines(self):
+        cases = [
+            ("OpenAI launches GPT API update", "mixed", "모델·제품"),
+            ("삼성이 생성형 AI 모델 출시", "mixed", "모델·제품"),
+            ("New arXiv paper reports transformer benchmark SOTA", "mixed", "연구"),
+            ("AI 논문 연구 데이터셋 공개", "mixed", "연구"),
+            ("AI startup funding round hits new valuation", "mixed", "산업·투자"),
+            ("AI 반도체 스타트업 투자 협력 확대", "mixed", "산업·투자"),
+            ("AI regulation privacy law advances", "mixed", "정책·규제"),
+            ("AI 정책 규제 법안 개인정보 논의", "mixed", "정책·규제"),
         ]
-        us_items = [
+        for title, default, expected in cases:
+            with self.subTest(title=title):
+                self.assertEqual(ai_news_tool.classify_news(title, default), expected)
+
+        self.assertEqual(ai_news_tool.classify_news("AI market digest", "mixed"), "mixed")
+        self.assertEqual(ai_news_tool.classify_news("AI market digest", "연구"), "연구")
+
+    def test_has_ai_anchor_avoids_airport_false_positive(self):
+        self.assertFalse(ai_news_tool.has_ai_anchor("Airport adds robot kiosks"))
+        self.assertTrue(ai_news_tool.has_ai_anchor("AI adds robot coding assistant"))
+        self.assertTrue(ai_news_tool.has_ai_anchor("Machine learning benchmark released"))
+        self.assertTrue(ai_news_tool.has_ai_anchor("생성형 모델 업데이트"))
+
+    def test_fetch_news_filters_anchor_parses_fields_and_ts_fallback(self):
+        feeds = [
+            {
+                "name": "Anchor Feed",
+                "url": "https://feed.test/rss",
+                "region": "KR",
+                "category": "mixed",
+                "needs_ai_anchor": True,
+            }
+        ]
+        rss = _rss(
+            [
+                ("Airport adds robot kiosks", "Airport Daily", "https://news.test/airport", "bad-date"),
+                ("OpenAI launches GPT API update", None, "https://news.test/openai", "bad-date"),
+            ]
+        )
+
+        def fake_http_get(url, timeout=15):
+            self.assertEqual(timeout, 12)
+            return "application/rss+xml", rss
+
+        with (
+            mock.patch.object(ai_news_tool, "FEED_REGISTRY", feeds),
+            mock.patch("ai_news.ai_news_tool.http_tool.http_get", side_effect=fake_http_get),
+            mock.patch("ai_news.ai_news_tool.time.time", return_value=98765.0),
+        ):
+            news = ai_news_tool.fetch_news()
+
+        self.assertEqual(len(news), 1)
+        self.assertEqual(news[0]["title"], "OpenAI launches GPT API update")
+        self.assertEqual(news[0]["region"], "KR")
+        self.assertEqual(news[0]["category"], "모델·제품")
+        self.assertEqual(news[0]["source"], "Anchor Feed")
+        self.assertEqual(news[0]["link"], "https://news.test/openai")
+        self.assertEqual(news[0]["ts"], 98765.0)
+        self.assertNotEqual(news[0]["ts"], 0)
+
+    def test_fetch_news_caps_each_feed_dedupes_by_normalized_title_and_sorts(self):
+        feeds = [
+            {
+                "name": "Priority Feed",
+                "url": "https://feed.test/high",
+                "region": "global",
+                "category": "mixed",
+                "needs_ai_anchor": False,
+            },
+            {
+                "name": "Lower Feed",
+                "url": "https://feed.test/low",
+                "region": "KR",
+                "category": "mixed",
+                "needs_ai_anchor": False,
+            },
+        ]
+        high_items = [
+            ("OpenAI releases GPT-5!", None, "https://news.test/high/dupe", "Tue, 07 Jul 2026 00:00:00 +0000")
+        ] + [
             (
-                "us-new",
-                "US Source",
-                "https://news.test/us/new",
-                "Tue, 07 Jul 2026 02:00:00 +0000",
+                f"OpenAI model update {i}",
+                "High",
+                f"https://news.test/high/{i}",
+                f"Tue, 07 Jul 2026 00:{i + 1:02d}:00 +0000",
             )
+            for i in range(25)
+        ]
+        low_items = [
+            ("openai releases gpt 5", "Low", "https://news.test/low/dupe", "Tue, 07 Jul 2026 23:59:00 +0000"),
+            ("Gemini product launch", "Low", "https://news.test/low/new", "Tue, 07 Jul 2026 23:58:00 +0000"),
         ]
 
         def fake_http_get(url, timeout=15):
             self.assertEqual(timeout, 12)
-            return "application/rss+xml", _rss(kr_items if url.endswith("/kr") else us_items)
+            return "application/rss+xml", _rss(high_items if url.endswith("/high") else low_items)
 
         with (
-            mock.patch.object(ai_news_tool, "NEWS_FEEDS", feeds),
+            mock.patch.object(ai_news_tool, "FEED_REGISTRY", feeds),
             mock.patch("ai_news.ai_news_tool.http_tool.http_get", side_effect=fake_http_get),
         ):
             news = ai_news_tool.fetch_news()
 
-        self.assertEqual(len(news), 26)
-        self.assertEqual(news[0]["title"], "us-new")
-        self.assertEqual(news[0]["region"], "해외")
-        self.assertEqual(news[0]["source"], "US Source")
-        self.assertEqual(news[0]["link"], "https://news.test/us/new")
-        self.assertEqual(sum(1 for item in news if item["region"] == "국내"), 25)
+        self.assertEqual(sum(1 for item in news if item["source"] in ("Priority Feed", "High")), 20)
+        self.assertEqual(sum(1 for item in news if item["title"].lower().replace("-", " ") == "openai releases gpt 5"), 0)
+        self.assertEqual(len([item for item in news if "releases" in item["title"].lower()]), 1)
+        duplicate = [item for item in news if "releases" in item["title"].lower()][0]
+        self.assertEqual(duplicate["source"], "Priority Feed")
+        self.assertEqual(news[0]["title"], "Gemini product launch")
         self.assertGreaterEqual(news[0]["ts"], news[-1]["ts"])
 
+    def test_fetch_news_parses_hn_json_branch(self):
+        feeds = [
+            {
+                "name": "HN Algolia AI",
+                "url": "https://hn.algolia.com/api/v1/search_by_date?query=AI&tags=story",
+                "region": "global",
+                "category": "mixed",
+                "needs_ai_anchor": True,
+            }
+        ]
+        payload = {
+            "hits": [
+                {"title": "Airport queue data", "url": "https://news.test/airport", "created_at_i": 123},
+                {"title": "OpenAI arXiv paper benchmark", "url": "https://news.test/hn", "created_at_i": 456},
+            ]
+        }
+
+        def fake_http_json(url, timeout=15):
+            self.assertEqual(timeout, 12)
+            return payload
+
+        with (
+            mock.patch.object(ai_news_tool, "FEED_REGISTRY", feeds),
+            mock.patch("ai_news.ai_news_tool.http_tool.http_json", side_effect=fake_http_json),
+            mock.patch("ai_news.ai_news_tool.http_tool.http_get", side_effect=AssertionError("RSS branch used")),
+        ):
+            news = ai_news_tool.fetch_news()
+
+        self.assertEqual(news, [
+            {
+                "region": "global",
+                "category": "연구",
+                "title": "OpenAI arXiv paper benchmark",
+                "source": "Hacker News",
+                "link": "https://news.test/hn",
+                "ts": 456,
+            }
+        ])
+
     def test_fetch_news_returns_empty_chunk_on_fetch_or_parse_failure(self):
-        with mock.patch("ai_news.ai_news_tool.http_tool.http_get", side_effect=TimeoutError):
+        feeds = [
+            {
+                "name": "Broken Feed",
+                "url": "https://feed.test/broken",
+                "region": "global",
+                "category": "mixed",
+                "needs_ai_anchor": False,
+            }
+        ]
+        with (
+            mock.patch.object(ai_news_tool, "FEED_REGISTRY", feeds),
+            mock.patch("ai_news.ai_news_tool.http_tool.http_get", side_effect=TimeoutError),
+        ):
             self.assertEqual(ai_news_tool.fetch_news(), [])
 
     def test_fetch_hf_models_dedupes_splits_and_limits_results(self):
