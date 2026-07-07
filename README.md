@@ -310,7 +310,6 @@ git pull
 
 - 포팅 계획: [`devlog/_plan/010_porting-plan.md`](devlog/_plan/010_porting-plan.md)
 - 프론트엔드 정책: [`devlog/_plan/020_frontend-policy.md`](devlog/_plan/020_frontend-policy.md)
-- jaw-marketing 비교 분석: [`devlog/_plan/090_jaw-marketing-analysis.md`](devlog/_plan/090_jaw-marketing-analysis.md)
 - CI 파이프라인 계획: [`devlog/_plan/100_ci-pipeline.md`](devlog/_plan/100_ci-pipeline.md)
 - 기능별 구조 문서: [`devlog/str_func/`](devlog/str_func/)
 - 완료된 작업 로그: [`devlog/_fin/`](devlog/_fin/)
@@ -325,7 +324,7 @@ MIT
 
 ## 변경 기록
 
-- 2026-07-07: README를 cli-jaw 수준으로 확장 (배지, 스크린샷 갤러리, API 레퍼런스,
+- 2026-07-07: README 확장 (배지, 스크린샷 갤러리, API 레퍼런스,
   트러블슈팅, 기여 가이드)
 - 2026-07-07: X syndication을 curl subprocess로 전환해 TLS 차단 해결
 - 2026-07-07: 피드 오류 계약(status/errors) 추가, 실패 결과 120초 단기 캐시
