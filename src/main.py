@@ -9,6 +9,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 from ai_news import ai_news_tool
+from date import date_tool
 from settings import BASE_DIR, CACHE_TTL, PORT
 from shared import accounts_tool, img_proxy_tool, saved_items_tool
 from reels import reels_tool
@@ -114,6 +115,14 @@ class Handler(BaseHTTPRequestHandler):
         data, fetched_at = ai_news_tool.get_ai_data(force)
         self._send(200, {**data, "fetchedAt": fetched_at, "cacheTtl": CACHE_TTL})
 
+    def _handle_date(self, qs):
+        force = qs.get("force", ["0"])[0] == "1"
+        country = qs.get("country", ["KR"])[0].upper()
+        if country not in youtube_tool.COUNTRY_LOCALE:
+            country = "KR"
+        data, fetched_at, cache_ttl = date_tool.get_date_radar(country, force)
+        self._send(200, {**data, "country": country, "fetchedAt": fetched_at, "cacheTtl": cache_ttl})
+
     def _handle_oembed(self, qs):
         self._send(200, ai_news_tool.fetch_oembed(qs.get("url", [""])[0]))
 
@@ -145,6 +154,7 @@ class Handler(BaseHTTPRequestHandler):
             "/api/x": self._handle_x,
             "/api/threads": self._handle_threads,
             "/api/ai": self._handle_ai,
+            "/api/date": self._handle_date,
             "/api/oembed": self._handle_oembed,
         }
         for path in STUB_PATHS:

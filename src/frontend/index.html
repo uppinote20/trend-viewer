@@ -42,6 +42,7 @@
     --c-threads: #ffffff;
     --c-tiktok: #00f2ea;
     --c-trends: #22c55e;
+    --c-date: #ff8fab;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { scrollbar-width: thin; scrollbar-color: var(--surface-3) transparent; }
@@ -198,6 +199,16 @@
   .badge.cat { background: rgba(255,255,255,.08); color: var(--text-secondary); }
   .newsitem .ntitle { font-size: 13.5px; line-height: 1.4; flex: 1; }
   .newsitem .nsrc { flex-shrink: 0; color: var(--muted); font-size: 12px; }
+  .date-brief { display: grid; gap: 8px; margin-bottom: 16px; }
+  .date-brief p { background: rgba(255,143,171,.10); border: 1px solid rgba(255,143,171,.28); color: var(--text-secondary); border-radius: 8px; padding: 10px 12px; font-size: 13px; line-height: 1.5; }
+  .date-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .date-card { display: flex; flex-direction: column; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; color: var(--text); cursor: pointer; transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition); }
+  .date-card:hover { border-color: rgba(255,143,171,.55); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+  .date-card .date-thumb { width: 100%; aspect-ratio: 16/9; object-fit: cover; background: var(--surface-1); }
+  .date-card .date-meta { padding: 12px 13px 14px; }
+  .date-card .date-title { font-size: 14px; font-weight: 750; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .date-card .date-sub { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 5px 8px; color: var(--muted); font-size: 12px; }
+  .date-card .date-tag { color: var(--c-date); background: rgba(255,143,171,.13); border-radius: 999px; padding: 2px 7px; font-weight: 700; }
 
   /* 릴스 탭 계정 관리 */
   .acc-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
@@ -400,6 +411,13 @@
     <div class="status" id="aiStatus" style="display:none"></div>
   </div>
 
+  <div id="dateView" class="ext-section" style="display:none">
+    <p class="note"><svg class="icon icon-sm" style="color:var(--c-date)"><use href="#i-heart"/></svg> YouTube 무인증 검색과 Google Trends RSS를 엮어 이번 주 데이트 코스 후보를 자동으로 추립니다. 설치형 로컬 앱 원칙에 맞춰 별도 API 키나 외부 패키지는 쓰지 않습니다.</p>
+    <div class="date-brief" id="dateBrief"></div>
+    <div class="status" id="dateStatus"></div>
+    <div class="date-grid" id="dateGrid"></div>
+  </div>
+
   <div id="reelsView" class="ext-section" style="display:none">
     <p class="note">인스타그램 웹 내부 API를 통해 등록된 계정들의 최신 릴스를 가져와 조회수순으로 정렬합니다. 아래에서 즐겨보는 크리에이터 계정을 자유롭게 추가·삭제하세요.</p>
     <h2 style="font-size:16px;margin-bottom:10px"><svg class="icon icon-sm"><use href="#i-user"/></svg> 구독 계정</h2>
@@ -474,6 +492,7 @@ const VIEWS = [
   { id: 'youtube', label: '영상', svgIcon: 'i-youtube', color: '--c-youtube', elementId: 'videoView', load: (f) => loadVideos(f), toolbar: 'categories', hasForce: true },
   { id: 'shorts', label: '쇼츠', svgIcon: 'i-shorts', color: '--c-shorts', elementId: 'videoView', load: (f) => loadVideos(f), toolbar: 'categories', hasForce: true },
   { id: 'ai', label: 'AI', svgIcon: 'i-cpu', color: '--c-ai', elementId: 'aiView', load: (f) => loadAI(f), toolbar: 'none', hasForce: true },
+  { id: 'date', label: '데이트', svgIcon: 'i-heart', color: '--c-date', elementId: 'dateView', load: (f) => loadDate(f), toolbar: 'countries', hasForce: true },
   { id: 'reels', label: '릴스', svgIcon: 'i-instagram', color: '--c-reels', elementId: 'reelsView', load: (f) => loadReels(f), toolbar: 'accounts', hasForce: true },
   { id: 'x', label: 'X', svgIcon: 'i-x-logo', color: '--c-x', elementId: 'xView', load: (f) => loadSocial('x', f), toolbar: 'accounts', hasForce: true },
   { id: 'threads', label: '스레드', svgIcon: 'i-threads', color: '--c-threads', elementId: 'threadsView', load: (f) => loadSocial('threads', f), toolbar: 'accounts', hasForce: true },
@@ -1372,6 +1391,88 @@ function renderModels(elId, models) {
     box.appendChild(a);
   });
 }
+
+let dateData = { ideas: [], briefing: [] };
+async function loadDate(force = false) {
+  const status = document.getElementById('dateStatus');
+  const grid = document.getElementById('dateGrid');
+  const brief = document.getElementById('dateBrief');
+  resetStatus(status);
+  status.style.display = 'none';
+  brief.innerHTML = '';
+  showSkeleton(grid, 8);
+  try {
+    const q = new URLSearchParams({ country: state.country, force: force ? '1' : '0' });
+    const res = await fetch('/api/date?' + q);
+    if (!res.ok) throw new Error(`데이트 ${res.status}`);
+    const data = await res.json();
+    document.getElementById('updated').textContent =
+      '업데이트: ' + new Date(data.fetchedAt * 1000).toLocaleTimeString('ko-KR');
+    renderCacheAge(status, data);
+    dateData = { ideas: data.ideas || [], briefing: data.briefing || [] };
+    renderDate();
+  } catch (e) {
+    grid.className = 'date-grid';
+    grid.innerHTML = '';
+    showError(status, '데이트 레이더');
+  }
+}
+
+function renderDate() {
+  const brief = document.getElementById('dateBrief');
+  const grid = document.getElementById('dateGrid');
+  brief.innerHTML = '';
+  grid.className = 'date-grid';
+  grid.innerHTML = '';
+  (dateData.briefing || []).forEach(line => {
+    const p = document.createElement('p');
+    p.textContent = line;
+    brief.appendChild(p);
+  });
+  if (!dateData.ideas.length) {
+    showEmpty(document.getElementById('dateStatus'), '데이트 후보가 없습니다', '잠시 후 새로고침하거나 국가를 바꿔 확인해 주세요.');
+    return;
+  }
+  dateData.ideas.forEach((item, index) => grid.appendChild(dateCard(item, index + 1)));
+}
+
+function dateCard(item, rank) {
+  const card = document.createElement('article');
+  card.className = 'date-card';
+  const url = safeUrl(item.url);
+  wireCardAction(card, () => { if (url) window.open(url, '_blank'); }, item.id || url || item.title || '');
+  const thumb = proxiedThumb(item.thumbnail);
+  if (thumb) {
+    const img = document.createElement('img');
+    img.className = 'date-thumb';
+    img.loading = 'lazy';
+    img.alt = '';
+    img.src = thumb;
+    card.appendChild(img);
+  }
+  const body = document.createElement('div');
+  body.className = 'date-meta';
+  const title = document.createElement('div');
+  title.className = 'date-title';
+  title.textContent = item.title || '';
+  const sub = document.createElement('div');
+  sub.className = 'date-sub';
+  [`${rank}위`, item.source, item.metric, item.account ? `@${item.account}` : '', item.published].filter(Boolean).forEach(value => {
+    const span = document.createElement('span');
+    span.textContent = value;
+    sub.appendChild(span);
+  });
+  (item.tags || []).slice(0, 3).forEach(tag => {
+    const span = document.createElement('span');
+    span.className = 'date-tag';
+    span.textContent = tag;
+    sub.appendChild(span);
+  });
+  body.append(title, sub);
+  card.appendChild(body);
+  return card;
+}
+
 function timeAgo(ts) {
   if (!ts) return '';
   const s = Date.now() / 1000 - ts;
@@ -1796,6 +1897,7 @@ const HOME_SECTIONS = [
   { key: 'youtube', tab: 'youtube', label: '영상', svgIcon: 'i-youtube', color: '--c-youtube', url: force => `/api/videos?period=week&country=${state.country}${force ? '&force=1' : ''}`, sourceName: '유튜브' },
   { key: 'shorts', tab: 'shorts', label: '쇼츠', svgIcon: 'i-shorts', color: '--c-shorts', url: force => `/api/videos?shorts=1&period=week&country=${state.country}${force ? '&force=1' : ''}`, sourceName: '쇼츠' },
   { key: 'ai', tab: 'ai', label: 'AI', svgIcon: 'i-cpu', color: '--c-ai', url: force => `/api/ai${force ? '?force=1' : ''}`, sourceName: 'AI 영상' },
+  { key: 'date', tab: 'date', label: '데이트', svgIcon: 'i-heart', color: '--c-date', url: force => `/api/date?country=${state.country}${force ? '&force=1' : ''}`, sourceName: '데이트 레이더' },
   { key: 'reels', tab: 'reels', label: '릴스', svgIcon: 'i-instagram', color: '--c-reels', url: force => `/api/reels${force ? '?force=1' : ''}`, sourceName: '릴스' },
   { key: 'x', tab: 'x', label: 'X', svgIcon: 'i-x-logo', color: '--c-x', url: force => `/api/x${force ? '?force=1' : ''}`, sourceName: 'X' },
   { key: 'threads', tab: 'threads', label: '스레드', svgIcon: 'i-threads', color: '--c-threads', url: force => `/api/threads${force ? '?force=1' : ''}`, sourceName: '스레드' },
@@ -1861,6 +1963,16 @@ function homeItems(section, data) {
     }));
   }
   if (section.key === 'ai') return aiHomeItems(data);
+  if (section.key === 'date') {
+    return (data.ideas || []).slice(0, 5).map(item => ({
+      title: item.title,
+      thumbnail: item.thumbnail ? `/api/img?u=${encodeURIComponent(item.thumbnail)}` : '',
+      meta: [item.source, item.metric, item.account ? `@${item.account}` : '', ...(item.tags || []).slice(0, 1)].filter(Boolean),
+      hot: item.metric || item.source,
+      url: item.url,
+      seenId: item.id || item.url,
+    }));
+  }
   if (section.key === 'reels' || section.key === 'tiktok') {
     const posts = section.key === 'reels' ? (data.reels || []) : (data.posts || []);
     return posts.slice(0, 5).map(p => ({
@@ -2200,10 +2312,12 @@ document.getElementById('countries').onclick = e => {
   });
   invalidateVideoViews();
   loadedViews.delete('trends');
+  loadedViews.delete('date');
   loadedViews.delete('home');
   loadedViews.add(state.tab);
   updateHashState();
   if (state.tab === 'trends') loadTrends();
+  else if (state.tab === 'date') loadDate();
   else if (state.tab === 'home') loadHome();
   else loadVideos();
 };
