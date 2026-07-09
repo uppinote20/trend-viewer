@@ -76,6 +76,22 @@ class CacheToolTest(unittest.TestCase):
         self.assertEqual(result, "forced")
         self.assertEqual(fetched_at, 12.0)
 
+    def test_cached_fetched_at_is_monotonic_for_same_key(self):
+        with mock.patch("shared.cache_tool.time.time", return_value=100.0):
+            _, first_fetched_at = cache_tool.cached("same", False, lambda: "first")
+            _, second_fetched_at = cache_tool.cached("same", True, lambda: "second")
+
+        self.assertEqual(first_fetched_at, 100.0)
+        self.assertEqual(second_fetched_at, 100.000001)
+
+    def test_cached_fetched_at_is_independent_between_keys(self):
+        with mock.patch("shared.cache_tool.time.time", return_value=100.0):
+            _, first_fetched_at = cache_tool.cached("first", False, lambda: "one")
+            _, second_fetched_at = cache_tool.cached("second", False, lambda: "two")
+
+        self.assertEqual(first_fetched_at, 100.0)
+        self.assertEqual(second_fetched_at, 100.0)
+
 
 if __name__ == "__main__":
     unittest.main()

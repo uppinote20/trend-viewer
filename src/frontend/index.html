@@ -1393,7 +1393,9 @@ function renderModels(elId, models) {
 }
 
 let dateData = { ideas: [], briefing: [] };
+let dateSeq = 0;
 async function loadDate(force = false) {
+  const seq = ++dateSeq;
   const status = document.getElementById('dateStatus');
   const grid = document.getElementById('dateGrid');
   const brief = document.getElementById('dateBrief');
@@ -1406,12 +1408,14 @@ async function loadDate(force = false) {
     const res = await fetch('/api/date?' + q);
     if (!res.ok) throw new Error(`데이트 ${res.status}`);
     const data = await res.json();
+    if (seq !== dateSeq) return;
     document.getElementById('updated').textContent =
       '업데이트: ' + new Date(data.fetchedAt * 1000).toLocaleTimeString('ko-KR');
     renderCacheAge(status, data);
     dateData = { ideas: data.ideas || [], briefing: data.briefing || [] };
     renderDate();
   } catch (e) {
+    if (seq !== dateSeq) return;
     grid.className = 'date-grid';
     grid.innerHTML = '';
     showError(status, '데이트 레이더');
@@ -1969,7 +1973,7 @@ function homeItems(section, data) {
       thumbnail: item.thumbnail ? `/api/img?u=${encodeURIComponent(item.thumbnail)}` : '',
       meta: [item.source, item.metric, item.account ? `@${item.account}` : '', ...(item.tags || []).slice(0, 1)].filter(Boolean),
       hot: item.metric || item.source,
-      url: item.url,
+      url: safeUrl(item.url),
       seenId: item.id || item.url,
     }));
   }
