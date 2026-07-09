@@ -8,6 +8,7 @@ import settings
 
 _cache = {}
 _cache_lock = threading.Lock()
+_last_fetched_at = 0.0
 
 
 def _entry_ttl(hit):
@@ -26,6 +27,10 @@ def cached(key, force, fetch_fn, ttl=None):
         effective_ttl = settings.CACHE_TTL
     fetched_at = time.time()
     with _cache_lock:
+        global _last_fetched_at
+        if 0 <= fetched_at - _last_fetched_at <= 0.000001:
+            fetched_at = _last_fetched_at + 0.000001
+        _last_fetched_at = fetched_at
         _cache[key] = (fetched_at, result, effective_ttl)
     return result, fetched_at
 
