@@ -8,3 +8,4 @@ config/*_accounts.json
 config/saved_items.json
 config/threads_doc_ids.json
 config/.threads_docid_expired
+config/analysis_history.json
