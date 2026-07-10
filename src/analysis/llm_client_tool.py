@@ -9,7 +9,7 @@ import urllib.parse
 
 
 DEFAULT_BASE_URL = "http://127.0.0.1:10100/v1"
-DEFAULT_MODEL = "cursor/gpt-5.6-luna"
+DEFAULT_MODEL = "gpt-5.6-luna"
 
 
 def is_enabled() -> bool:

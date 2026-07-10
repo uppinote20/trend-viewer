@@ -7,7 +7,7 @@ aliases: [분석 엔진 계획, analysis engine plan]
 # 130 — 분석 엔진 (WP2: LLM 클라이언트 + 휴리스틱 집계)
 
 trend-viewer를 수집기에서 분석기로 올리는 첫 단계 계획이다. 로컬 ocx 프록시의
-cursor/gpt-5.6-luna를 선택적 강화 수단으로 쓰고, LLM 없이도 완전한 휴리스틱
+gpt-5.6-luna를 선택적 강화 수단으로 쓰고, LLM 없이도 완전한 휴리스틱
 교차 플랫폼 상관·속도 분석이 돌아가야 한다. 아래는 3회 적대 감사(FAIL x2,
 GO-WITH-FIXES)를 통과한 REV 4 계획 원문이다. WP3(/api/analysis)와 WP4(분석 탭)는
 140/150 문서로 이어진다.
@@ -50,12 +50,12 @@ recorded, never gating [R3]; stop=suite green; memory=goalplan c2/c3; terminal=D
     cooperative fake) dripping newline-less bytes; assert complete() returns within
     deadline+slack. (Localhost test server is allowed; "no live network" means no external
     endpoints.)
-  - Real ocx stream shape (captured live 2026-07-10, model cursor/gpt-5.6-luna):
+  - Real ocx stream shape (captured live 2026-07-10, model gpt-5.6-luna):
     `event: response.output_text.delta` + `data: {"type":"response.output_text.delta",
     "output_index":0,"content_index":0,"delta":"UNA"}` ... then `event: response.output_text.done`
     + `data: {..."text":"LUNA-OK"}`, then response.completed, then `data: [DONE]`.
   - Env: TREND_ANALYSIS_BASE_URL (default http://127.0.0.1:10100/v1),
-    TREND_ANALYSIS_MODEL (default cursor/gpt-5.6-luna), TREND_ANALYSIS_ENABLED (default on).
+    TREND_ANALYSIS_MODEL (default gpt-5.6-luna), TREND_ANALYSIS_ENABLED (default on).
   - No API key header needed for local ocx (verified live: LUNA-OK).
   - LLM policy [B7][R3]: default stays ENABLED (single-user local deployment). Mandatory gate =
     mocked SSE unittest suite ONLY. Live smoke runs in C-phase IF `{base}/models` responds

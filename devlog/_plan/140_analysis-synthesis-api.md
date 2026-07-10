@@ -136,7 +136,7 @@ TTL을 그대로 전달한다.
 - [x] `force=1`은 30초 cooldown 안에서 cache를 재사용하고, 30초 뒤 실패 cache를 새 결과로 교체한다.
 - [x] `/api/analysis`가 국가를 검증하고 합성 모듈의 TTL을 그대로 전달한다.
 - [x] 전체 173개 unittest가 외부 네트워크 없이 통과한다.
-- [x] LLM-on curl에서 `generatedBy: cursor/gpt-5.6-luna`와 5개 cluster를 확인했다.
+- [x] LLM-on curl에서 `generatedBy: gpt-5.6-luna`와 5개 cluster를 확인했다.
 - [x] LLM-off curl에서 `generatedBy: heuristic`과 6개 cluster를 확인했다.
 
 ## 변경 기록
