@@ -2245,7 +2245,7 @@ function createHomeRow(item, rank, section) {
   row.className = 'home-row';
   row.style.setProperty('--home-color', `var(${section.color})`);
   wireCardAction(row, item.onClick || (() => {
-    if (item.url) window.open(item.url, '_blank');
+    if (item.url) window.open(item.url, '_blank', 'noopener');
   }), item.seenId || item.url || '');
 
   if (item.thumbnail) {

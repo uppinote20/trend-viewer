@@ -81,7 +81,7 @@ recorded, never gating [R3]; stop=suite green; memory=goalplan c2/c3; terminal=D
     tokens, where ASCII tokens use boundary equality and HANGUL anchor tokens (len>=2) match
     by prefix (text token startswith anchor token, so 손흥민 matches 손흥민이) [R6].
     Tests: 손흥민 vs "손흥민이 해트트릭" positive; 카페 vs "카페인 효과" negative (prefix on
-    anchor-token side only, anchor 카페 len 2 <3 compact rule, token 카페 vs 카페인 prefix — 
+    anchor-token side only, anchor 카페 len 2 <3 compact rule, token 카페 vs 카페인 prefix —
     counter-guard: prefix match requires anchor token len>=3 OR exact equality) [R6].
   - No character bigrams [B4]. Deterministic, pure functions.
 - `src/analysis/aggregate_tool.py` — deterministic core:

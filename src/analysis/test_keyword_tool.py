@@ -24,6 +24,10 @@ class KeywordToolTests(unittest.TestCase):
         self.assertFalse(keyword_tool.matches("ai", "a comfortable chair"))
         self.assertTrue(keyword_tool.matches("ai", "AI tools are useful"))
 
+    def test_ascii_anchor_does_not_compact_match_a_longer_word(self):
+        self.assertFalse(keyword_tool.matches("meta", "metaverse title"))
+        self.assertTrue(keyword_tool.matches("meta", "Meta launches glasses"))
+
     def test_phrase_rule_requires_all_significant_tokens(self):
         self.assertTrue(keyword_tool.matches("openai benchmark", "Benchmark results from OpenAI"))
         self.assertFalse(keyword_tool.matches("openai benchmark", "OpenAI product launch"))

@@ -24,6 +24,23 @@ from . import keyword_tool
 _CHANNELS = ("trends", "youtube", "reels", "x", "threads", "tiktok", "ai_news")
 _HISTORY_LIMIT = 48
 _history_lock = threading.Lock()
+_executor = None
+_executor_lock = threading.Lock()
+
+
+def _get_executor():
+    global _executor
+    with _executor_lock:
+        if _executor is None:
+            # Never shut down: caps leaked collector threads at 7 for the process
+            # lifetime. Trade-off (reviewed, accepted): a collector blocked forever
+            # on a dead socket would delay interpreter exit until the OS-level
+            # timeouts fire; acceptable for a local single-user tool.
+            _executor = concurrent.futures.ThreadPoolExecutor(
+                max_workers=7,
+                thread_name_prefix="analysis-collect",
+            )
+        return _executor
 
 
 def ensure_registered():
@@ -46,6 +63,17 @@ def _as_float(value):
         return float(value or 0)
     except (TypeError, ValueError, OverflowError):
         return 0
+
+
+def _history_number(value):
+    """Parse an untrusted history number, rejecting booleans and non-finite values."""
+    if isinstance(value, bool):
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return number if math.isfinite(number) else None
 
 
 def _item(platform, title, url, metric, ts):
@@ -148,7 +176,7 @@ def _embedded_errors(channel, errors):
     for error in errors:
         if isinstance(error, dict):
             entry = dict(error)
-            entry["channel"] = channel
+            entry.setdefault("channel", channel)
         else:
             entry = {"channel": channel, "kind": "error", "detail": str(error)}
         harvested.append(entry)
@@ -159,30 +187,27 @@ def collect_snapshot(country="KR", force=False, deadline=25):
     """Collect seven source channels concurrently within a shared deadline."""
     started_at = time.monotonic()
     ensure_registered()
-    executor = concurrent.futures.ThreadPoolExecutor(max_workers=7)
+    executor = _get_executor()
     futures = {
         channel: executor.submit(_fetch_channel, channel, country, force)
         for channel in _CHANNELS
     }
     items = []
     errors = []
-    try:
-        remaining = max(0.0, float(deadline) - (time.monotonic() - started_at))
-        done, _ = concurrent.futures.wait(tuple(futures.values()), timeout=remaining)
-        for channel in _CHANNELS:
-            future = futures[channel]
-            if future not in done:
-                errors.append({"channel": channel, "kind": "timeout"})
-                continue
-            try:
-                channel_items, channel_errors = future.result()
-            except Exception:
-                errors.append({"channel": channel, "kind": "error"})
-                continue
-            items.extend(channel_items)
-            errors.extend(_embedded_errors(channel, channel_errors))
-    finally:
-        executor.shutdown(wait=False)
+    remaining = max(0.0, float(deadline) - (time.monotonic() - started_at))
+    done, _ = concurrent.futures.wait(tuple(futures.values()), timeout=remaining)
+    for channel in _CHANNELS:
+        future = futures[channel]
+        if future not in done:
+            errors.append({"channel": channel, "kind": "timeout"})
+            continue
+        try:
+            channel_items, channel_errors = future.result()
+        except Exception:
+            errors.append({"channel": channel, "kind": "error"})
+            continue
+        items.extend(channel_items)
+        errors.extend(_embedded_errors(channel, channel_errors))
     return {"items": items, "errors": errors}
 
 
@@ -317,12 +342,12 @@ def velocity(topics, history, country, now):
     for entry in history:
         if not isinstance(entry, dict) or entry.get("country") != country:
             continue
-        try:
-            timestamp = float(entry.get("ts"))
-        except (TypeError, ValueError, OverflowError):
+        timestamp = _history_number(entry.get("ts"))
+        baseline_topics = entry.get("topics")
+        if timestamp is None or not isinstance(baseline_topics, dict):
             continue
         if now - 86400 <= timestamp <= now - 1800:
-            eligible.append((timestamp, entry))
+            eligible.append((timestamp, baseline_topics))
 
     annotated = [dict(topic) for topic in topics]
     if not eligible:
@@ -333,16 +358,12 @@ def velocity(topics, history, country, now):
             "velocityBaseline": {"available": False, "elapsedSeconds": None},
         }
 
-    baseline_ts, baseline = max(eligible, key=lambda pair: pair[0])
-    baseline_topics = baseline.get("topics")
-    if not isinstance(baseline_topics, dict):
-        baseline_topics = {}
+    baseline_ts, baseline_topics = max(eligible, key=lambda pair: pair[0])
     for topic in annotated:
-        previous = baseline_topics.get(topic["keyword"])
-        if previous is None:
+        previous_score = _history_number(baseline_topics.get(topic["keyword"]))
+        if previous_score is None:
             state = "new"
         else:
-            previous_score = float(previous)
             current_score = float(topic["score"])
             if current_score > previous_score * 1.10:
                 state = "rising"
@@ -376,6 +397,32 @@ def _compose_briefing(topics):
     return [rising_line, cross_line]
 
 
+def _has_channel_failure(snapshot):
+    if not isinstance(snapshot, dict):
+        return False
+    errors = snapshot.get("errors")
+    if not isinstance(errors, list):
+        return False
+    covered_channels = {
+        item.get("platform")
+        for item in _snapshot_items(snapshot)
+        if item.get("platform") in _CHANNELS
+    }
+    for error in errors:
+        if not isinstance(error, dict):
+            continue
+        channel = error.get("channel")
+        if channel not in _CHANNELS:
+            continue
+        is_channel_error = (
+            error.get("kind") in ("timeout", "error")
+            and set(error) == {"channel", "kind"}
+        )
+        if is_channel_error or channel not in covered_channels:
+            return True
+    return False
+
+
 def analyze_heuristic(country, force):
     """Run collection, correlation, prior-history velocity, then persistence."""
     ensure_registered()
@@ -391,7 +438,7 @@ def analyze_heuristic(country, force):
         output_topics.append(output)
 
     errors = list(snapshot.get("errors", []))
-    if not record_history(country, topics, now=now):
+    if not _has_channel_failure(snapshot) and not record_history(country, topics, now=now):
         errors.append({"channel": "history", "kind": "error"})
     return {
         "topics": output_topics,

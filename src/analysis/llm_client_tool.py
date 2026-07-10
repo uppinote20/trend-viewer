@@ -42,9 +42,39 @@ def _assemble_text(
     return "".join(parts) or None
 
 
+def _consume_sse_event(data_lines, deltas, done_text):
+    if not data_lines:
+        return
+    data = "\n".join(data_lines)
+    if data == "[DONE]":
+        return
+    try:
+        event = json.loads(data)
+    except json.JSONDecodeError:
+        return
+    if not isinstance(event, dict):
+        return
+
+    output_index = event.get("output_index", 0)
+    content_index = event.get("content_index", 0)
+    if not isinstance(output_index, int) or not isinstance(content_index, int):
+        return
+    key = (output_index, content_index)
+
+    if event.get("type") == "response.output_text.delta":
+        delta = event.get("delta")
+        if isinstance(delta, str):
+            deltas.setdefault(key, []).append(delta)
+    elif event.get("type") == "response.output_text.done":
+        text = event.get("text")
+        if isinstance(text, str):
+            done_text[key] = text
+
+
 def _read_sse(response: http.client.HTTPResponse) -> str | None:
     deltas = {}
     done_text = {}
+    data_lines = []
 
     try:
         while True:
@@ -52,36 +82,19 @@ def _read_sse(response: http.client.HTTPResponse) -> str | None:
             if not raw_line:
                 break
 
-            line = raw_line.decode("utf-8", errors="replace").strip()
-            if not line or line.startswith(":") or not line.startswith("data:"):
+            line = raw_line.decode("utf-8", errors="replace").rstrip("\r\n")
+            if not line:
+                _consume_sse_event(data_lines, deltas, done_text)
+                data_lines.clear()
                 continue
-
-            data = line[5:].lstrip()
-            if data == "[DONE]":
+            if line.startswith(":") or not line.startswith("data:"):
                 continue
-
-            try:
-                event = json.loads(data)
-            except json.JSONDecodeError:
-                continue
-
-            output_index = event.get("output_index", 0)
-            content_index = event.get("content_index", 0)
-            if not isinstance(output_index, int) or not isinstance(content_index, int):
-                continue
-            key = (output_index, content_index)
-
-            if event.get("type") == "response.output_text.delta":
-                delta = event.get("delta")
-                if isinstance(delta, str):
-                    deltas.setdefault(key, []).append(delta)
-            elif event.get("type") == "response.output_text.done":
-                text = event.get("text")
-                if isinstance(text, str):
-                    done_text[key] = text
+            data = line[5:]
+            data_lines.append(data[1:] if data.startswith(" ") else data)
     except OSError:
         pass
 
+    _consume_sse_event(data_lines, deltas, done_text)
     return _assemble_text(deltas, done_text)
 
 

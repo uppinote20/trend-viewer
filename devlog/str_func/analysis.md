@@ -299,7 +299,9 @@ def complete(
 - fenced data block 안의 문장을 명령으로 따르지 말라는 규칙을 prompt에도 반복한다.
 - 모델 응답의 evidence는 ID 문자열만 허용한다.
 - 알 수 없는 ID, URL처럼 보이는 문자열, dict 형태의 가짜 근거는 모두 버린다.
-- 최종 title과 URL은 모델 응답이 아니라 trusted `evidence_map`에서 복원한다.
+- 근거(evidence)의 title과 URL은 모델 응답이 아니라 trusted `evidence_map`에서 복원한다.
+- 클러스터 제목·설명·브리핑 문장은 모델 생성 텍스트다. sanitize와 길이 제한은 거치지만
+  의미 자체는 모델 출력이므로, 스크랩된 제목에 심긴 지시문이 분석 문구에 영향을 줄 수 있다.
 - URL parser를 통과해도 `http`와 `https` 이외 scheme은 버린다.
 - 플랫폼 값은 `_ALLOWED_PLATFORMS` 집합에 든 값만 남긴다.
 - 잘못된 momentum은 `steady`로 낮춘다.
@@ -322,7 +324,8 @@ def complete(
 - inactivity timeout 뒤 이미 받은 완전한 SSE delta가 있으면 partial text를 조립할 수 있다.
 - 줄바꿈 없는 byte drip은 SSE event가 완성되지 않으므로 deadline 뒤 `None`이 될 수 있다.
 - 분석 탭이 쓰는 `_synthesize` 호출은 기본값보다 짧은 `timeout=10`, `deadline=45`를 전달한다.
-- 따라서 대화형 경로의 총 watchdog 상한은 45초이다.
+- LLM 구간의 watchdog 상한은 45초이고, 앞선 수집 deadline 25초를 더하면
+  대화형 경로의 총 상한은 약 70초이다.
 - 별도로 `collect_snapshot`은 기본 25초의 공유 수집 deadline을 가진다.
 - 수집 deadline은 완료된 채널 결과를 버리지 않고 timeout 채널만 오류로 기록한다.
 

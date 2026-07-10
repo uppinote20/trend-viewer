@@ -227,6 +227,80 @@ class AggregateToolTests(unittest.TestCase):
                     worker.join(1)
                     self.assertFalse(worker.is_alive())
 
+    def test_collect_snapshot_executor_thread_cap_across_concurrent_calls(self):
+        release_blocked = threading.Event()
+        all_blocked_started = threading.Event()
+        all_blocked_finished = threading.Event()
+        count_lock = threading.Lock()
+        blocked_started = [0]
+        blocked_finished = [0]
+        snapshots = []
+        errors = []
+
+        def blocked_tiktok(force):
+            del force
+            with count_lock:
+                blocked_started[0] += 1
+                if blocked_started[0] == 3:
+                    all_blocked_started.set()
+            try:
+                if not release_blocked.wait(timeout=0.5):
+                    raise AssertionError("timed out waiting to release blocked channel")
+                return [], [], 0
+            finally:
+                with count_lock:
+                    blocked_finished[0] += 1
+                    if blocked_finished[0] == 3:
+                        all_blocked_finished.set()
+
+        def collect():
+            try:
+                snapshots.append(aggregate_tool.collect_snapshot(deadline=0.2))
+            except BaseException as error:
+                errors.append(error)
+
+        self.tiktok.side_effect = blocked_tiktok
+        baseline = threading.active_count()
+        callers = [
+            threading.Thread(target=collect, name="snapshot-call-%d" % index)
+            for index in range(3)
+        ]
+        for caller in callers:
+            caller.start()
+        try:
+            self.assertTrue(all_blocked_started.wait(timeout=0.5))
+            for caller in callers:
+                caller.join(timeout=0.5)
+            active_after_calls = threading.active_count()
+        finally:
+            release_blocked.set()
+            for caller in callers:
+                caller.join(timeout=0.5)
+            blocked_calls_finished = all_blocked_finished.wait(timeout=0.5)
+
+        self.assertTrue(all(not caller.is_alive() for caller in callers))
+        self.assertTrue(blocked_calls_finished)
+        if errors:
+            raise errors[0]
+        self.assertEqual(len(snapshots), 3)
+        self.assertTrue(
+            all(
+                {"channel": "tiktok", "kind": "timeout"} in snapshot["errors"]
+                for snapshot in snapshots
+            )
+        )
+        for getter in (
+            self.trends,
+            self.youtube,
+            self.reels,
+            self.x_posts,
+            self.threads,
+            self.tiktok,
+            self.ai_news,
+        ):
+            self.assertEqual(getter.call_count, 3)
+        self.assertLessEqual(active_after_calls, baseline + 7 + 2)
+
     def test_collect_snapshot_contains_channel_error_when_getter_raises(self):
         self.trends.return_value = (
             [{"keyword": "Still Here", "trafficValue": 10, "news": []}], 0, [], 1
@@ -367,6 +441,37 @@ class AggregateToolTests(unittest.TestCase):
             "velocityBaseline": {"available": False, "elapsedSeconds": None},
         })
 
+    def test_analyze_skips_malformed_history_values_without_raising(self):
+        path = os.path.join(self.tmpdir.name, "analysis_history.json")
+        with open(path, "w", encoding="utf-8") as history_file:
+            json.dump(
+                [
+                    {
+                        "ts": 1000,
+                        "country": "KR",
+                        "topics": {"alpha": "bad-score", "other": 1},
+                    },
+                    {"ts": "bad-ts", "country": "KR", "topics": {"alpha": 1}},
+                    {"ts": 1100, "country": "KR", "topics": ["not", "a", "mapping"]},
+                ],
+                history_file,
+            )
+        self.trends.return_value = (
+            [{"keyword": "Alpha", "trafficValue": 99, "ts": 10, "news": []}],
+            0,
+            [],
+            3600,
+        )
+
+        with mock.patch.object(aggregate_tool.time, "time", return_value=4600):
+            result = aggregate_tool.analyze_heuristic("KR", False)
+
+        self.assertEqual(result["topics"][0]["velocity"], "new")
+        self.assertEqual(
+            result["velocityBaseline"],
+            {"available": True, "elapsedSeconds": 3600},
+        )
+
     def test_history_missing_and_corrupt_files_reset_to_empty(self):
         self.assertEqual(aggregate_tool.load_history(), [])
         path = os.path.join(self.tmpdir.name, "analysis_history.json")
@@ -409,6 +514,51 @@ class AggregateToolTests(unittest.TestCase):
         self.assertEqual(len(history), 20)
         self.assertTrue(all(set(entry) == {"ts", "country", "topics"} for entry in history))
 
+    def test_history_lock_preserves_cross_country_concurrent_writers(self):
+        release_writers = threading.Event()
+        ready = {"KR": threading.Event(), "US": threading.Event()}
+        errors = []
+
+        def writer(country, offset):
+            ready[country].set()
+            try:
+                if not release_writers.wait(timeout=0.5):
+                    raise AssertionError("timed out waiting to start history writers")
+                for index in range(20):
+                    recorded = aggregate_tool.record_history(
+                        country,
+                        [{"keyword": country.lower(), "score": index}],
+                        now=offset + index,
+                    )
+                    if not recorded:
+                        raise AssertionError("history write failed for " + country)
+            except BaseException as error:
+                errors.append(error)
+
+        writers = [
+            threading.Thread(target=writer, args=("KR", 100), name="history-kr"),
+            threading.Thread(target=writer, args=("US", 200), name="history-us"),
+        ]
+        for thread in writers:
+            thread.start()
+        try:
+            for writer_ready in ready.values():
+                self.assertTrue(writer_ready.wait(timeout=0.5))
+            release_writers.set()
+        finally:
+            release_writers.set()
+            for thread in writers:
+                thread.join(timeout=0.5)
+
+        self.assertTrue(all(not thread.is_alive() for thread in writers))
+        if errors:
+            raise errors[0]
+        path = os.path.join(self.tmpdir.name, "analysis_history.json")
+        with open(path, encoding="utf-8") as history_file:
+            history = json.load(history_file)
+        self.assertEqual(len(history), 40)
+        self.assertEqual({entry["country"] for entry in history}, {"KR", "US"})
+
     def test_analyze_empty_snapshot_has_exact_insufficient_envelope_and_briefing(self):
         with mock.patch.object(aggregate_tool.time, "time", return_value=1000):
             result = aggregate_tool.analyze_heuristic("KR", False)
@@ -445,6 +595,78 @@ class AggregateToolTests(unittest.TestCase):
             aggregate_tool.analyze_heuristic("KR", False)
 
         self.assertEqual(calls, ["velocity", "record"])
+
+    def test_analyze_skips_history_write_for_channel_timeout_or_error(self):
+        for kind in ("timeout", "error"):
+            with self.subTest(kind=kind), mock.patch.object(
+                aggregate_tool,
+                "collect_snapshot",
+                return_value={
+                    "items": [],
+                    "errors": [{"channel": "youtube", "kind": kind}],
+                },
+            ), mock.patch.object(aggregate_tool, "record_history") as record:
+                result = aggregate_tool.analyze_heuristic("KR", False)
+
+            record.assert_not_called()
+            self.assertIn({"channel": "youtube", "kind": kind}, result["errors"])
+
+    def test_analyze_skips_history_when_trends_failure_has_no_items(self):
+        self.trends.return_value = (
+            [],
+            123,
+            [{"country": "KR", "kind": "TimeoutError"}],
+            3600,
+        )
+        self.youtube.return_value = (
+            [{"id": "yt", "title": "Shared topic", "views": 10}],
+            123,
+        )
+        self.reels.return_value = (
+            [{"title": "Shared topic", "url": "https://reel.test/shared", "views": 5}],
+            [],
+            123,
+            [],
+            3600,
+        )
+        expected_error = {
+            "country": "KR",
+            "kind": "TimeoutError",
+            "channel": "trends",
+        }
+
+        with mock.patch.object(aggregate_tool, "record_history") as record:
+            result = aggregate_tool.analyze_heuristic("KR", False)
+
+        record.assert_not_called()
+        self.assertIn(expected_error, result["errors"])
+        self.assertTrue(result["topics"])
+
+    def test_analyze_records_history_with_embedded_account_error(self):
+        embedded_error = {
+            "channel": "reels",
+            "account": "example",
+            "kind": "timeout",
+            "code": None,
+        }
+        partial_item = {
+            "platform": "reels",
+            "title": "partial reel",
+            "url": "https://reel.test/p",
+            "metric": 10,
+            "ts": 0,
+        }
+        with mock.patch.object(
+            aggregate_tool,
+            "collect_snapshot",
+            return_value={"items": [partial_item], "errors": [embedded_error]},
+        ), mock.patch.object(
+            aggregate_tool, "record_history", return_value=True
+        ) as record:
+            result = aggregate_tool.analyze_heuristic("KR", False)
+
+        record.assert_called_once_with("KR", mock.ANY, now=mock.ANY)
+        self.assertIn(embedded_error, result["errors"])
 
     def test_analyze_exact_eligible_baseline_envelope(self):
         aggregate_tool.record_history("KR", [{"keyword": "alpha", "score": 1.0}], now=1000)

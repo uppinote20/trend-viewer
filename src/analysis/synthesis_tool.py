@@ -3,6 +3,8 @@
 import json
 import os
 import re
+import threading
+import time
 from urllib.parse import urlsplit
 
 from shared import cache_tool
@@ -26,6 +28,9 @@ _NEWLINE_SPACE_RE = re.compile(r" *\n *")
 _MULTI_NEWLINE_RE = re.compile(r"\n+")
 _DEFAULT_MODEL = "cursor/gpt-5.6-luna"
 _EMPTY_BRIEFING = "분석할 토픽이 아직 충분하지 않습니다."
+_FORCE_COOLDOWN = 30
+_country_locks = {}
+_country_locks_guard = threading.Lock()
 
 
 def _sanitize_text(value, maxlen):
@@ -38,6 +43,10 @@ def _sanitize_text(value, maxlen):
     text = _NEWLINE_SPACE_RE.sub("\n", text)
     text = _MULTI_NEWLINE_RE.sub("\n", text).strip()
     return text[:maxlen]
+
+
+def _sanitize_prompt_text(value, maxlen):
+    return _sanitize_text(value, maxlen).replace("`", "'")
 
 
 def _sanitize_payload(value, seen=None):
@@ -79,12 +88,12 @@ def build_prompt(topics, country):
     for topic in source_topics[:14]:
         if not isinstance(topic, dict):
             continue
-        velocity = _sanitize_text(str(topic.get("velocity") or ""), 40)
+        velocity = _sanitize_prompt_text(str(topic.get("velocity") or ""), 40)
         prompt_topic = {
-            "title": _sanitize_text(str(topic.get("title") or ""), 120),
-            "keyword": _sanitize_text(str(topic.get("keyword") or ""), 120),
+            "title": _sanitize_prompt_text(str(topic.get("title") or ""), 120),
+            "keyword": _sanitize_prompt_text(str(topic.get("keyword") or ""), 120),
             "platforms": [
-                _sanitize_text(platform, 30)
+                _sanitize_prompt_text(platform, 30)
                 for platform in (topic.get("platforms") or [])
                 if isinstance(platform, str)
             ],
@@ -97,15 +106,15 @@ def build_prompt(topics, country):
                 continue
             evidence_id = "E" + str(evidence_number)
             evidence_number += 1
-            title = _sanitize_text(str(item.get("title") or ""), 120)
-            url = _sanitize_text(str(item.get("url") or ""), 2048)
+            title = _sanitize_prompt_text(str(item.get("title") or ""), 120)
+            url = _sanitize_prompt_text(str(item.get("url") or ""), 2048)
             evidence_map[evidence_id] = {"title": title, "url": url}
             prompt_topic["items"].append(
                 {
                     "id": evidence_id,
-                    "platform": _sanitize_text(str(item.get("platform") or ""), 30),
+                    "platform": _sanitize_prompt_text(str(item.get("platform") or ""), 30),
                     "title": title,
-                    "metric": _sanitize_text(str(item.get("metric") or "0"), 40),
+                    "metric": _sanitize_prompt_text(str(item.get("metric") or "0"), 40),
                     "velocity": velocity,
                 }
             )
@@ -121,7 +130,7 @@ def build_prompt(topics, country):
     )
     data = json.dumps(prompt_topics, ensure_ascii=False, separators=(",", ":"))
     prompt = (
-        f"Synthesize trend clusters for country {_sanitize_text(str(country), 8)}.\n"
+        f"Synthesize trend clusters for country {_sanitize_prompt_text(str(country), 8)}.\n"
         "Return JSON only using this contract:\n"
         f"{contract}\n"
         "Rules: at most 6 clusters; at most 5 keywords per cluster; why at most "
@@ -384,13 +393,39 @@ def _analysis_ttl(data):
     return 1800 if isinstance(llm, dict) and llm.get("ok") is True else 300
 
 
+class _CacheMiss(Exception):
+    pass
+
+
+def _country_lock(country):
+    with _country_locks_guard:
+        return _country_locks.setdefault(country, threading.Lock())
+
+
+def _read_fresh_cache(key):
+    def cache_miss():
+        raise _CacheMiss
+
+    try:
+        return cache_tool.cached(key, False, cache_miss, ttl=_analysis_ttl)
+    except _CacheMiss:
+        return None
+
+
 def get_analysis(country, force):
     """Return synthesized analysis plus cache timestamp and the stored entry TTL."""
     key = ("analysis", country)
-    data, fetched_at = cache_tool.cached(
-        key,
-        force,
-        lambda: _synthesize(country, force),
-        ttl=_analysis_ttl,
-    )
-    return data, fetched_at, cache_tool.ttl_for(key)
+    with _country_lock(country):
+        cached_result = _read_fresh_cache(key)
+        if cached_result is not None:
+            data, fetched_at = cached_result
+            if not force or time.time() - fetched_at < _FORCE_COOLDOWN:
+                return data, fetched_at, cache_tool.ttl_for(key)
+
+        data, fetched_at = cache_tool.cached(
+            key,
+            force,
+            lambda: _synthesize(country, force),
+            ttl=_analysis_ttl,
+        )
+        return data, fetched_at, cache_tool.ttl_for(key)

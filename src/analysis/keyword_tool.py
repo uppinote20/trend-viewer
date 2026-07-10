@@ -225,7 +225,11 @@ def matches(anchor, text):
     compact_text = normalized_text.replace(" ", "")
     pure_hangul = bool(_HANGUL_RE.fullmatch(compact_anchor))
     compact_threshold = 3 if pure_hangul else 4
-    if len(compact_anchor) >= compact_threshold and compact_anchor in compact_text:
+    if (
+        not compact_anchor.isascii()
+        and len(compact_anchor) >= compact_threshold
+        and compact_anchor in compact_text
+    ):
         return True
 
     anchor_tokens = tokens(normalized_anchor)

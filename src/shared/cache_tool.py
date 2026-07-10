@@ -8,6 +8,8 @@ import settings
 
 _cache = {}
 _cache_lock = threading.Lock()
+_inflight = {}
+_INFLIGHT_WAIT_SECONDS = 180
 
 
 def _entry_ttl(hit):
@@ -15,22 +17,46 @@ def _entry_ttl(hit):
 
 
 def cached(key, force, fetch_fn, ttl=None):
+    wait_event = None
     with _cache_lock:
-        now = time.time()
+        read_at = time.time()
         hit = _cache.get(key)
-        if hit and not force and now - hit[0] < _entry_ttl(hit):
+        if hit and not force and read_at - hit[0] < _entry_ttl(hit):
             return hit[1], hit[0]
-    result = fetch_fn()
-    effective_ttl = ttl(result) if callable(ttl) else ttl
-    if effective_ttl is None:
-        effective_ttl = settings.CACHE_TTL
-    with _cache_lock:
-        fetched_at = time.time()
-        previous = _cache.get(key)
-        if previous and fetched_at <= previous[0]:
-            fetched_at = previous[0] + 0.000001
-        _cache[key] = (fetched_at, result, effective_ttl)
-    return result, fetched_at
+        if not force:
+            wait_event = _inflight.get(key)
+        if wait_event is None:
+            own_event = threading.Event()
+            _inflight[key] = own_event
+
+    if wait_event is not None:
+        wait_event.wait(timeout=_INFLIGHT_WAIT_SECONDS)
+        with _cache_lock:
+            current = _cache.get(key)
+            if current is not None and current is not hit:
+                return current[1], current[0]
+            own_event = threading.Event()
+            _inflight[key] = own_event
+
+    try:
+        result = fetch_fn()
+        effective_ttl = ttl(result) if callable(ttl) else ttl
+        if effective_ttl is None:
+            effective_ttl = settings.CACHE_TTL
+        with _cache_lock:
+            fetched_at = time.time()
+            current = _cache.get(key)
+            if current is not None and current is not hit:
+                return result, fetched_at
+            if current and fetched_at <= current[0]:
+                fetched_at = current[0] + 0.000001
+            _cache[key] = (fetched_at, result, effective_ttl)
+        return result, fetched_at
+    finally:
+        with _cache_lock:
+            if _inflight.get(key) is own_event:
+                del _inflight[key]
+        own_event.set()
 
 
 def ttl_for(key):

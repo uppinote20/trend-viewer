@@ -4,11 +4,12 @@
 
 ## What this project does
 
-Local web app aggregating YouTube/Shorts (InnerTube), Instagram Reels, X (syndication API), Threads (GraphQL, fallback), TikTok (tikwm), and AI video model/news feeds. Category x period filters, sort menus, 1h cache, image proxy. Serves at `http://localhost:8778`.
+Local web app aggregating YouTube/Shorts (InnerTube), Instagram Reels, X (syndication API), Threads (GraphQL, fallback), TikTok (tikwm), and AI video model/news feeds. Category x period filters, sort menus, per-source TTL cache, image proxy. Serves at `http://localhost:8779`.
 
 ## Tech stack & constraints
 
 - **Python 3 stdlib only** — no pip dependencies (upstream promise: double-click run for non-devs). Do not add dependencies without approval.
+- Analysis: `src/analysis/` uses an optional local LLM proxy through a stdlib SSE client and falls back to heuristics.
 - Frontend: single `index.html` initially; split into `frontend/` assets during porting phases.
 - Feature-based layout under `src/` (snake_case package folders — Python import constraint, `__init__.py` barrels, `_tool.py` suffix, `test_*.py` colocated).
 

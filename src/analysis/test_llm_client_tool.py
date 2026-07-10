@@ -130,6 +130,20 @@ class LlmClientToolTest(unittest.TestCase):
 
         self.assertEqual(result, "hello world")
 
+    def test_multiline_data_event_is_joined_and_flushed_at_stream_end(self):
+        stream = (
+            b"data: {\n"
+            b'data: "type": "response.output_text.done",\n'
+            b'data: "output_index": 0,\n'
+            b'data: "content_index": 0,\n'
+            b'data: "text": "multiline event"\n'
+            b"data: }\n"
+        )
+
+        result, _ = self._complete_with_response(_Response(stream))
+
+        self.assertEqual(result, "multiline event")
+
     def test_mixed_multipart_stream_is_sorted_by_output_index(self):
         stream = _event(
             {
